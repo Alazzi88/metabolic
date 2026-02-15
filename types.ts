@@ -1,35 +1,69 @@
 export enum DiseaseType {
   PKU = 'PKU',
-  MMA_PA = 'MMA_PA',
+  TYR_I_IA_IB = 'TYR_I_IA_IB',
+  TYR_II_III = 'TYR_II_III',
   MSUD = 'MSUD',
-  GA = 'GA',
-  UCD = 'UCD'
+  LEU_CATABOLISM = 'LEU_CATABOLISM',
+  BETA_KETOTHIOLASE = 'BETA_KETOTHIOLASE',
+  HOMOCYSTINURIA = 'HOMOCYSTINURIA',
+  GA_TYPE_I = 'GA_TYPE_I',
+  GA_TYPE_II = 'GA_TYPE_II',
+  LPI = 'LPI',
+  MMA_PA = 'MMA_PA',
+  GALACTOSEMIA = 'GALACTOSEMIA',
+  UCD = 'UCD',
 }
 
 export type TargetMode = 'MIN' | 'MID' | 'MAX';
+export type FormulaRole = 'standard' | 'special' | 'modular';
+
+export type NutrientUnit =
+  | 'mg/kg'
+  | 'mg/day'
+  | 'g/kg'
+  | 'g/day'
+  | 'kcal/kg'
+  | 'kcal/day'
+  | 'mL/kg'
+  | 'mL/day'
+  | '%energy';
+
+export interface NutrientRange {
+  min: number;
+  max: number;
+  unit: NutrientUnit;
+  mid?: number;
+  minOnly?: boolean;
+}
 
 export interface AgeGuideline {
   ageLabel: string;
-  kcalPerKg: { min: number; max: number };
-  proPerKg: { min: number; max: number };
-  // دعم الحدود المتعددة (mg/kg) مثل MET, ILE, LYS...
-  limits?: Record<string, { min: number; max: number }>;
-  // دعم الحدود اليومية الثابتة (mg/day)
-  dailyLimits?: Record<string, { min: number; max: number }>;
-  // توزيع بروتين UCD
-  ucdPro?: {
-    medical: { min: number; max: number };
-    intact: { min: number; max: number };
-  };
+  nutrients: Record<string, NutrientRange>;
 }
 
-export interface FormulaStats {
-  id: string;
+export interface DiseaseMeta {
+  en: { name: string; short: string };
+  ar: { name: string; short: string };
+  primaryLimiter?: string;
+}
+
+export interface FormulaReference {
   name: string;
-  kcal: number;
-  protein: number;
-  limiter: number; // القيمة المحددة الأساسية لكل 100 جرام
-  tyr?: number; // mg per 100g
+  basis: '100mL' | '100g';
+  values: Record<string, number>;
+}
+
+export interface FormulaOption extends FormulaReference {
+  id: string;
+  role: FormulaRole;
+  diseases?: DiseaseType[];
+  note?: string;
+}
+
+export interface FormulaSelection {
+  standard: FormulaReference;
+  special?: FormulaReference | null;
+  modular?: FormulaReference | null;
 }
 
 export interface CalculationInputs {
@@ -38,41 +72,80 @@ export interface CalculationInputs {
   ageGroupIndex: number;
   targetMode: TargetMode;
   feedsPerDay: number;
+  analysisValues?: Record<string, number | undefined>;
+  scoopSizeG: number;
+  waterPerScoopMl: number;
+  formulas: FormulaSelection;
+}
+
+export interface CalculatedRequirement {
+  nutrient: string;
+  source: NutrientRange;
+  totalMin: number;
+  totalMax: number;
+  totalTarget: number;
+  totalUnit: 'mg/day' | 'g/day' | 'kcal/day' | 'mL/day' | '%energy';
+}
+
+export interface FormulaContribution {
+  role: FormulaRole;
+  formulaName: string;
+  basis: '100mL' | '100g';
+  amount: number;
+  amountUnit: 'mL/day' | 'g/day';
+  kcal: number;
+  protein: number;
+  primaryLimiterDelivered?: number;
+  scoops?: number;
+  waterMl?: number;
+  perFeedAmount?: number;
+  perFeedScoops?: number;
+  perFeedWaterMl?: number;
+}
+
+export interface FormulaPlan {
+  primaryLimiter?: string;
+  notes: string[];
+  items: FormulaContribution[];
+  totals: {
+    kcal: number;
+    protein: number;
+    primaryLimiter?: number;
+    powderG: number;
+    scoops: number;
+    waterMl: number;
+    readyToFeedMl: number;
+    finalVolumeMl: number;
+    scoopsPerFeed: number;
+    volumePerFeedMl: number;
+  };
+  deficits: {
+    protein: number;
+    energy: number;
+  };
+}
+
+export interface AnalysisRecommendation {
+  overallStatus: 'LOW' | 'NORMAL' | 'HIGH' | 'NA';
+  items: Array<{
+    nutrient: string;
+    expectedMin?: number;
+    expectedMax?: number;
+    unit?: string;
+    inputValue?: number;
+    status: 'LOW' | 'NORMAL' | 'HIGH' | 'NA';
+    message: string;
+  }>;
 }
 
 export interface CalculationOutputs {
-  targets: {
-    kcal: number;
-    protein: number;
-    fluids: number;
-    limits: Record<string, number>;
+  rows: CalculatedRequirement[];
+  highlights: {
+    targetEnergy?: number;
+    targetProtein?: number;
+    targetFluid?: number;
+    primaryLimit?: { nutrient: string; value: number; unit: string };
   };
-  recipe: {
-    standardG: number;
-    specialG: number;
-    modularG: number;
-    totalG: number;
-    totalScoops: number;
-    totalVolume: number;
-    scoopsPerFeed: number;
-    volumePerFeed: number;
-    standardScoops: number;
-    specialScoops: number;
-    modularScoops: number;
-  };
-  analysis: {
-    kcalFromStandard: number;
-    kcalFromSpecial: number;
-    kcalBeforeModular: number;
-    kcalDeficit: number;
-    modularNeeded: boolean;
-    proteinFromStandard: number;
-    proteinFromSpecial: number;
-    proteinDeficitAfterStandard: number;
-  };
-  actuals: {
-    kcal: number;
-    protein: number;
-    limits: Record<string, number>;
-  };
+  formulaPlan: FormulaPlan;
+  analysis: AnalysisRecommendation;
 }

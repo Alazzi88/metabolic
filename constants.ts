@@ -1,90 +1,188 @@
-import { DiseaseType, AgeGuideline, FormulaStats } from './types';
+import {
+  AgeGuideline,
+  DiseaseMeta,
+  DiseaseType,
+  FormulaOption,
+  FormulaReference,
+  NutrientRange,
+} from './types';
 
-export const DISEASE_METADATA = {
+const r = (min: number, max: number, unit: NutrientRange['unit'], mid?: number): NutrientRange => ({
+  min,
+  max,
+  unit,
+  mid,
+});
+
+const atLeast = (min: number, unit: NutrientRange['unit']): NutrientRange => ({
+  min,
+  max: min,
+  unit,
+  minOnly: true,
+});
+
+const fixed = (value: number, unit: NutrientRange['unit']): NutrientRange => ({
+  min: value,
+  max: value,
+  unit,
+});
+
+export const DISEASE_METADATA: Record<DiseaseType, DiseaseMeta> = {
   [DiseaseType.PKU]: {
     en: { name: 'Phenylketonuria', short: 'PKU' },
     ar: { name: 'بيلة الفينيل كيتون', short: 'PKU' },
-    primaryLimiter: 'PHE'
+    primaryLimiter: 'PHE',
   },
-  [DiseaseType.MMA_PA]: {
-    en: { name: 'Methylmalonic / Propionic Acidemia', short: 'MMA/PA' },
-    ar: { name: 'حموضة ميثيل مالونيك / بروبيونيك', short: 'MMA/PA' },
-    primaryLimiter: 'MET'
+  [DiseaseType.TYR_I_IA_IB]: {
+    en: { name: 'Tyrosinemia Types Ia and Ib', short: 'TYR Ia/Ib' },
+    ar: { name: 'تيروزينيميا النوع Ia و Ib', short: 'TYR Ia/Ib' },
+    primaryLimiter: 'PHE+TYR',
+  },
+  [DiseaseType.TYR_II_III]: {
+    en: { name: 'Tyrosinemia Types II and III', short: 'TYR II/III' },
+    ar: { name: 'تيروزينيميا النوع II و III', short: 'TYR II/III' },
+    primaryLimiter: 'PHE',
   },
   [DiseaseType.MSUD]: {
     en: { name: 'Maple Syrup Urine Disease', short: 'MSUD' },
     ar: { name: 'داء بول شراب القيقب', short: 'MSUD' },
-    primaryLimiter: 'LEU'
+    primaryLimiter: 'LEU',
   },
-  [DiseaseType.GA]: {
-    en: { name: 'Glutaric Acidemia', short: 'GA' },
-    ar: { name: 'حموضة الغلوتاريك', short: 'GA' },
-    primaryLimiter: 'LYS'
+  [DiseaseType.LEU_CATABOLISM]: {
+    en: { name: 'Disorders of Leucine Catabolism', short: 'LEU-CAT' },
+    ar: { name: 'اضطرابات أيض الليوسين', short: 'LEU-CAT' },
+    primaryLimiter: 'LEU',
+  },
+  [DiseaseType.BETA_KETOTHIOLASE]: {
+    en: { name: 'Beta-Ketothiolase Deficiency', short: 'BKT' },
+    ar: { name: 'نقص بيتا-كيتوثيولاز', short: 'BKT' },
+    primaryLimiter: 'LEU',
+  },
+  [DiseaseType.HOMOCYSTINURIA]: {
+    en: { name: 'Homocystinuria', short: 'HCU' },
+    ar: { name: 'هوموسيستين يوريا', short: 'HCU' },
+    primaryLimiter: 'MET',
+  },
+  [DiseaseType.GA_TYPE_I]: {
+    en: { name: 'Glutaric Aciduria Type I / 2-Ketoadipic Aciduria', short: 'GA-I' },
+    ar: { name: 'حموضة الغلوتاريك النوع الأول / 2-كيتوأديبيك', short: 'GA-I' },
+    primaryLimiter: 'LYS',
+  },
+  [DiseaseType.GA_TYPE_II]: {
+    en: { name: 'Glutaric Acidemia Type II', short: 'GA-II' },
+    ar: { name: 'حموضة الغلوتاريك النوع الثاني', short: 'GA-II' },
+    primaryLimiter: 'Protein',
+  },
+  [DiseaseType.LPI]: {
+    en: { name: 'Lysinuric Protein Intolerance', short: 'LPI' },
+    ar: { name: 'عدم تحمل البروتين الليزينوري', short: 'LPI' },
+    primaryLimiter: 'Protein',
+  },
+  [DiseaseType.MMA_PA]: {
+    en: { name: 'Propionic / Methylmalonic Acidemia', short: 'PA/MMA' },
+    ar: { name: 'حموضة بروبيونيك / ميثيل مالونيك', short: 'PA/MMA' },
+    primaryLimiter: 'VAL',
+  },
+  [DiseaseType.GALACTOSEMIA]: {
+    en: { name: 'Galactosemia', short: 'GALT' },
+    ar: { name: 'جالاكتوسيميا', short: 'GALT' },
+    primaryLimiter: 'Protein',
   },
   [DiseaseType.UCD]: {
     en: { name: 'Urea Cycle Disorders', short: 'UCD' },
     ar: { name: 'اضطرابات دورة اليوريا', short: 'UCD' },
-    primaryLimiter: 'Intact Pro'
+    primaryLimiter: 'Protein',
   },
-};
-
-export const FORMULA_KEY_BY_DISEASE: Record<DiseaseType, { standard: string; special: string }> = {
-  [DiseaseType.PKU]: { standard: 'PKU_STD', special: 'PKU_SPEC' },
-  [DiseaseType.MMA_PA]: { standard: 'MMA_STD', special: 'MMA_SPEC' },
-  [DiseaseType.MSUD]: { standard: 'MSUD_STD', special: 'MSUD_SPEC' },
-  [DiseaseType.GA]: { standard: 'GA_STD', special: 'GA_SPEC' },
-  [DiseaseType.UCD]: { standard: 'UCD_STD', special: 'UCD_SPEC' },
 };
 
 export const UI_STRINGS = {
   ar: {
     appTitle: 'Metabolic Formula Pro',
-    subtitle: 'Simple case-style calculator',
+    subtitle: 'Case-style calculator from your provided source only',
     switchLang: 'English',
     patientData: 'بيانات الحالة',
     diagnosis: 'التشخيص',
     weight: 'الوزن (كجم)',
     ageGroup: 'الفئة العمرية',
     targetMode: 'نمط الهدف',
-    feedsPerDay: 'عدد الوجبات/اليوم',
+    feedsPerDay: 'عدد الرضعات/اليوم',
+    analysisInputsTitle: 'تحاليل المرض (حسب العناصر المطلوبة)',
+    analysisExpectedRange: 'النطاق المطلوب',
+    analysisInputValue: 'قيمة التحليل المدخلة',
+    analysisItemLabel: 'العنصر',
+    scoopSize: 'حجم الملعقة (جم)',
+    waterPerScoop: 'الماء لكل ملعقة (مل)',
     min: 'أدنى',
-    mid: 'متوسط',
+    mid: 'منتصف',
     max: 'أعلى',
-    requirementsTitle: 'Nutrition Requirements',
-    nutrient: 'Nutrient',
-    perKg: 'Per kg',
-    totalDay: 'Total/day',
-    resultsTitle: 'ملخص الحساب',
+    formulaConfigTitle: 'اختيار الفورمولا المتاحة',
+    standardFormula: 'Standard Formula',
+    specialFormula: 'Special Formula',
+    modularFormula: 'Modular Formula',
+    formulaOption: 'نوع الفورمولا',
+    noneOption: 'بدون',
+    customOption: 'مخصص (إدخال يدوي)',
+    customName: 'اسم الفورمولا',
+    basis: 'الأساس',
+    kcalPerBasis: 'السعرات لكل 100',
+    proteinPerBasis: 'البروتين لكل 100',
+    limiterPerBasis: 'العنصر المحدد لكل 100',
+    requirementsTitle: 'الاحتياجات المحسوبة',
+    nutrient: 'العنصر',
+    sourceRange: 'المدى من المصدر',
+    dailyRange: 'المدى اليومي المحسوب',
+    selectedTarget: 'الهدف المختار',
+    summaryTitle: 'ملخص اليوم',
     targetEnergy: 'الطاقة المستهدفة',
     targetProtein: 'البروتين المستهدف',
-    targetFluids: 'السوائل المستهدفة',
+    targetFluid: 'السوائل المستهدفة',
     primaryLimit: 'الحد الأساسي',
-    deficitTitle: 'العجز والموديولار',
-    kcalFromBase: 'سعرات من Standard + Special',
-    kcalDeficit: 'العجز الحراري',
-    proteinDeficit: 'عجز البروتين بعد الـ Standard',
-    modularStatus: 'هل يحتاج Modular؟',
-    modularToAdd: 'الكمية المضافة من المنتج (Modular)',
-    needed: 'نعم',
-    notNeeded: 'لا',
-    formulaPlanTitle: 'خطة الكميات اليومية',
-    formulaType: 'نوع الفورمولا',
-    gramsPerDay: 'جرام/يوم',
-    scoopsPerDay: 'مكيال/يوم',
-    standard: 'Standard Formula',
-    special: 'Special Formula',
-    modular: 'Protein-free (Modular)',
+    analysisTitle: 'تفسير التحاليل',
+    analysisStatus: 'حالة التحليل',
+    analysisAdvice: 'التوصية',
+    statusLow: 'منخفض',
+    statusNormal: 'ضمن النطاق',
+    statusHigh: 'مرتفع',
+    statusNA: 'غير مدخل',
+    planTitle: 'خطة الفورمولا (تفصيل order)',
+    role: 'النوع',
+    amount: 'الكمية/اليوم',
+    kcal: 'السعرات',
+    protein: 'البروتين',
+    limiterDelivered: 'العنصر المحدد الناتج',
+    scoops: 'الملاعق/اليوم',
+    water: 'الماء/اليوم',
+    perFeedAmount: 'الكمية/رضعة',
+    perFeedScoops: 'ملاعق/رضعة',
+    perFeedWater: 'ماء/رضعة',
+    totalsTitle: 'الإجماليات',
+    totalKcal: 'إجمالي السعرات',
+    totalProtein: 'إجمالي البروتين',
     totalPowder: 'إجمالي البودرة',
-    prepTitle: 'التحضير',
-    totalVolume: 'إجمالي الحجم اليومي',
-    perFeedVolume: 'الحجم لكل وجبة',
-    perFeedScoops: 'المكيال لكل وجبة',
-    reference: 'المعادلات محفوظة داخليًا حسب Guideline المعتمد',
-    disclaimer: 'للاستخدام من المختصين فقط ويجب التحقق السريري النهائي قبل التطبيق.'
+    totalScoops: 'إجمالي الملاعق',
+    totalWater: 'إجمالي الماء',
+    totalVolume: 'الحجم الكلي النهائي',
+    volumePerFeed: 'الحجم لكل رضعة',
+    scoopsPerFeed: 'الملاعق لكل رضعة',
+    orderTitle: 'Order جاهز',
+    orderStandard: 'Standard',
+    orderSpecial: 'Special',
+    orderModular: 'Modular',
+    orderNote: 'ملاحظة',
+    standardTitle: 'ملخص الـ Standard',
+    formulaName: 'الفورمولا',
+    limitingNutrient: 'العنصر المحدد',
+    maxStandard: 'أقصى كمية Standard',
+    deliveredProtein: 'بروتين من الـ Standard',
+    deliveredEnergy: 'طاقة من الـ Standard',
+    proteinDeficit: 'العجز البروتيني',
+    energyDeficit: 'العجز الطاقي',
+    reference: 'المصدر: جداول Ross Products Division (2001) المرسلة داخل المحادثة',
+    noFormula: 'لا توجد بيانات كافية لحساب الـ Standard Formula لهذا المرض من الجداول المتاحة.',
   },
   en: {
     appTitle: 'Metabolic Formula Pro',
-    subtitle: 'Simple case-style calculator',
+    subtitle: 'Case-style calculator from your provided source only',
     switchLang: 'العربية',
     patientData: 'Case Inputs',
     diagnosis: 'Diagnosis',
@@ -92,96 +190,2009 @@ export const UI_STRINGS = {
     ageGroup: 'Age Group',
     targetMode: 'Target Mode',
     feedsPerDay: 'Feeds/day',
+    analysisInputsTitle: 'Disease Analysis Inputs',
+    analysisExpectedRange: 'Expected range',
+    analysisInputValue: 'Entered value',
+    analysisItemLabel: 'Element',
+    scoopSize: 'Scoop size (g)',
+    waterPerScoop: 'Water per scoop (mL)',
     min: 'MIN',
     mid: 'MID',
     max: 'MAX',
-    requirementsTitle: 'Nutrition Requirements',
+    formulaConfigTitle: 'Available Formula Selection',
+    standardFormula: 'Standard Formula',
+    specialFormula: 'Special Formula',
+    modularFormula: 'Modular Formula',
+    formulaOption: 'Formula type',
+    noneOption: 'None',
+    customOption: 'Custom (manual input)',
+    customName: 'Formula name',
+    basis: 'Basis',
+    kcalPerBasis: 'Calories per 100',
+    proteinPerBasis: 'Protein per 100',
+    limiterPerBasis: 'Primary limiter per 100',
+    requirementsTitle: 'Calculated Requirements',
     nutrient: 'Nutrient',
-    perKg: 'Per kg',
-    totalDay: 'Total/day',
-    resultsTitle: 'Calculation Summary',
+    sourceRange: 'Source Range',
+    dailyRange: 'Calculated Daily Range',
+    selectedTarget: 'Selected Target',
+    summaryTitle: 'Daily Summary',
     targetEnergy: 'Target Energy',
     targetProtein: 'Target Protein',
-    targetFluids: 'Target Fluids',
+    targetFluid: 'Target Fluid',
     primaryLimit: 'Primary Limit',
-    deficitTitle: 'Deficit & Modular',
-    kcalFromBase: 'Calories from Standard + Special',
-    kcalDeficit: 'Calorie Deficit',
-    proteinDeficit: 'Protein deficit after standard',
-    modularStatus: 'Modular needed?',
-    modularToAdd: 'Modular product to add',
-    needed: 'Yes',
-    notNeeded: 'No',
-    formulaPlanTitle: 'Daily Formula Plan',
-    formulaType: 'Formula type',
-    gramsPerDay: 'g/day',
-    scoopsPerDay: 'scoops/day',
-    standard: 'Standard Formula',
-    special: 'Special Formula',
-    modular: 'Protein-free (Modular)',
-    totalPowder: 'Total Powder',
-    prepTitle: 'Preparation',
-    totalVolume: 'Total daily volume',
-    perFeedVolume: 'Volume per feed',
-    perFeedScoops: 'Scoops per feed',
-    reference: 'Standard formula guideline is saved internally',
-    disclaimer: 'Clinical verification is required before use.'
-  }
+    analysisTitle: 'Analysis Interpretation',
+    analysisStatus: 'Analysis status',
+    analysisAdvice: 'Recommendation',
+    statusLow: 'Low',
+    statusNormal: 'Within range',
+    statusHigh: 'High',
+    statusNA: 'Not entered',
+    planTitle: 'Formula Plan (Order breakdown)',
+    role: 'Role',
+    amount: 'Amount/day',
+    kcal: 'Calories',
+    protein: 'Protein',
+    limiterDelivered: 'Primary limiter delivered',
+    scoops: 'Scoops/day',
+    water: 'Water/day',
+    perFeedAmount: 'Amount/feed',
+    perFeedScoops: 'Scoops/feed',
+    perFeedWater: 'Water/feed',
+    totalsTitle: 'Totals',
+    totalKcal: 'Total calories',
+    totalProtein: 'Total protein',
+    totalPowder: 'Total powder',
+    totalScoops: 'Total scoops',
+    totalWater: 'Total water',
+    totalVolume: 'Total final volume',
+    volumePerFeed: 'Volume/feed',
+    scoopsPerFeed: 'Scoops/feed',
+    orderTitle: 'Ready Order',
+    orderStandard: 'Standard',
+    orderSpecial: 'Special',
+    orderModular: 'Modular',
+    orderNote: 'Note',
+    standardTitle: 'Standard Summary',
+    formulaName: 'Formula',
+    limitingNutrient: 'Limiting nutrient',
+    maxStandard: 'Max standard amount',
+    deliveredProtein: 'Protein from standard',
+    deliveredEnergy: 'Energy from standard',
+    proteinDeficit: 'Protein deficit',
+    energyDeficit: 'Energy deficit',
+    reference: 'Source: Ross Products Division (2001) tables provided in this chat',
+    noFormula: 'Insufficient standard-formula data for this disease from the provided tables.',
+  },
 };
 
 export const GUIDELINES: Record<DiseaseType, AgeGuideline[]> = {
   [DiseaseType.PKU]: [
-    { ageLabel: 'Birth to 3 months', kcalPerKg: { min: 108, max: 120 }, proPerKg: { min: 2.5, max: 3.0 }, limits: { PHE: { min: 25, max: 70 } }, dailyLimits: { TYR: { min: 1000, max: 1300 } } },
-    { ageLabel: '3 to <6 months', kcalPerKg: { min: 95, max: 105 }, proPerKg: { min: 2.0, max: 3.0 }, limits: { PHE: { min: 20, max: 45 } }, dailyLimits: { TYR: { min: 1400, max: 2100 } } },
-    { ageLabel: '6 to <9 months', kcalPerKg: { min: 85, max: 95 }, proPerKg: { min: 2.0, max: 2.5 }, limits: { PHE: { min: 15, max: 35 } }, dailyLimits: { TYR: { min: 2500, max: 3000 } } },
-    { ageLabel: '9 to <12 months', kcalPerKg: { min: 80, max: 90 }, proPerKg: { min: 2.0, max: 2.5 }, limits: { PHE: { min: 10, max: 35 } }, dailyLimits: { TYR: { min: 2500, max: 3000 } } },
-    { ageLabel: '1 to 4 years', kcalPerKg: { min: 70, max: 85 }, proPerKg: { min: 1.5, max: 2.0 }, dailyLimits: { PHE: { min: 200, max: 320 }, TYR: { min: 2800, max: 3500 } } },
-    { ageLabel: '4 years to adult', kcalPerKg: { min: 40, max: 60 }, proPerKg: { min: 1.0, max: 1.5 }, dailyLimits: { PHE: { min: 200, max: 1100 }, TYR: { min: 4000, max: 6000 } } },
+    {
+      ageLabel: '0 to <3 mo',
+      nutrients: {
+        PHE: r(25, 70, 'mg/kg'),
+        TYR: r(300, 350, 'mg/kg'),
+        Protein: r(3, 3.5, 'g/kg'),
+        Energy: r(95, 145, 'kcal/kg', 120),
+        Fluid: r(135, 160, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '3 to <6 mo',
+      nutrients: {
+        PHE: r(20, 45, 'mg/kg'),
+        TYR: r(300, 350, 'mg/kg'),
+        Protein: r(3, 3.5, 'g/kg'),
+        Energy: r(95, 145, 'kcal/kg', 120),
+        Fluid: r(130, 160, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '6 to <9 mo',
+      nutrients: {
+        PHE: r(15, 35, 'mg/kg'),
+        TYR: r(250, 300, 'mg/kg'),
+        Protein: r(2.5, 3, 'g/kg'),
+        Energy: r(80, 135, 'kcal/kg', 110),
+        Fluid: r(125, 145, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '9 to <12 mo',
+      nutrients: {
+        PHE: r(10, 35, 'mg/kg'),
+        TYR: r(250, 300, 'mg/kg'),
+        Protein: r(2.5, 3, 'g/kg'),
+        Energy: r(80, 135, 'kcal/kg', 105),
+        Fluid: r(120, 135, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '1 to <4 yr',
+      nutrients: {
+        PHE: r(200, 400, 'mg/day'),
+        TYR: r(1.72, 3, 'g/day'),
+        Protein: atLeast(30, 'g/day'),
+        Energy: r(900, 1800, 'kcal/day', 1300),
+        Fluid: r(900, 1800, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: '4 to <7 yr',
+      nutrients: {
+        PHE: r(210, 450, 'mg/day'),
+        TYR: r(2.25, 3.5, 'g/day'),
+        Protein: atLeast(35, 'g/day'),
+        Energy: r(1300, 2300, 'kcal/day', 1700),
+        Fluid: r(1300, 2300, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: '7 to <11 yr',
+      nutrients: {
+        PHE: r(220, 500, 'mg/day'),
+        TYR: r(2.55, 4, 'g/day'),
+        Protein: atLeast(40, 'g/day'),
+        Energy: r(1650, 3300, 'kcal/day', 2400),
+        Fluid: r(1650, 3300, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Women 11 to <15 yr',
+      nutrients: {
+        PHE: r(250, 750, 'mg/day'),
+        TYR: r(3.45, 5, 'g/day'),
+        Protein: atLeast(50, 'g/day'),
+        Energy: r(1500, 3000, 'kcal/day', 2200),
+        Fluid: r(1500, 3000, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Women 15 to <19 yr',
+      nutrients: {
+        PHE: r(230, 700, 'mg/day'),
+        TYR: r(3.45, 5, 'g/day'),
+        Protein: atLeast(55, 'g/day'),
+        Energy: r(1200, 3000, 'kcal/day', 2100),
+        Fluid: r(1200, 3000, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Women >=19 yr',
+      nutrients: {
+        PHE: r(220, 700, 'mg/day'),
+        TYR: r(3.75, 5, 'g/day'),
+        Protein: atLeast(60, 'g/day'),
+        Energy: r(1400, 2500, 'kcal/day', 2100),
+        Fluid: r(2100, 2500, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Men 11 to <15 yr',
+      nutrients: {
+        PHE: r(225, 900, 'mg/day'),
+        TYR: r(3.38, 5.5, 'g/day'),
+        Protein: atLeast(55, 'g/day'),
+        Energy: r(2000, 3700, 'kcal/day', 2700),
+        Fluid: r(2000, 3700, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Men 15 to <19 yr',
+      nutrients: {
+        PHE: r(295, 1100, 'mg/day'),
+        TYR: r(4.42, 6.5, 'g/day'),
+        Protein: atLeast(65, 'g/day'),
+        Energy: r(2100, 3900, 'kcal/day', 2800),
+        Fluid: r(2100, 3900, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Men >=19 yr',
+      nutrients: {
+        PHE: r(290, 1200, 'mg/day'),
+        TYR: r(4.35, 6.5, 'g/day'),
+        Protein: atLeast(70, 'g/day'),
+        Energy: r(2000, 3300, 'kcal/day', 2900),
+        Fluid: r(2000, 3300, 'mL/day'),
+      },
+    },
   ],
-  [DiseaseType.MMA_PA]: [
-    { ageLabel: '0-6 months', kcalPerKg: { min: 125, max: 145 }, proPerKg: { min: 2.75, max: 3.5 }, limits: { ILE: { min: 60, max: 110 }, MET: { min: 20, max: 50 }, THR: { min: 50, max: 125 }, VAL: { min: 60, max: 105 } } },
-    { ageLabel: '7-12 months', kcalPerKg: { min: 115, max: 140 }, proPerKg: { min: 2.5, max: 3.25 }, limits: { ILE: { min: 40, max: 90 }, MET: { min: 15, max: 40 }, THR: { min: 20, max: 75 }, VAL: { min: 40, max: 80 } } },
+
+  [DiseaseType.TYR_I_IA_IB]: [
+    {
+      ageLabel: '0 to <3 mo',
+      nutrients: {
+        'PHE+TYR': r(65, 155, 'mg/kg'),
+        Protein: r(3, 3.5, 'g/kg'),
+        Energy: r(95, 145, 'kcal/kg', 120),
+        Fluid: r(135, 160, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '3 to <6 mo',
+      nutrients: {
+        'PHE+TYR': r(55, 135, 'mg/kg'),
+        Protein: r(3, 3.5, 'g/kg'),
+        Energy: r(95, 145, 'kcal/kg', 120),
+        Fluid: r(130, 160, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '6 to <9 mo',
+      nutrients: {
+        'PHE+TYR': r(50, 120, 'mg/kg'),
+        Protein: r(2.5, 3, 'g/kg'),
+        Energy: r(80, 135, 'kcal/kg', 110),
+        Fluid: r(125, 145, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '9 to <12 mo',
+      nutrients: {
+        'PHE+TYR': r(40, 105, 'mg/kg'),
+        Protein: r(2.5, 3, 'g/kg'),
+        Energy: r(80, 135, 'kcal/kg', 105),
+        Fluid: r(120, 135, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '1 to <4 yr',
+      nutrients: {
+        'PHE+TYR': r(380, 800, 'mg/day'),
+        Protein: atLeast(30, 'g/day'),
+        Energy: r(900, 1800, 'kcal/day', 1300),
+        Fluid: r(900, 1800, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: '4 to <7 yr',
+      nutrients: {
+        'PHE+TYR': r(390, 900, 'mg/day'),
+        Protein: atLeast(35, 'g/day'),
+        Energy: r(1300, 2300, 'kcal/day', 1700),
+        Fluid: r(1300, 2300, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: '7 to <11 yr',
+      nutrients: {
+        'PHE+TYR': r(400, 1000, 'mg/day'),
+        Protein: atLeast(40, 'g/day'),
+        Energy: r(1650, 3300, 'kcal/day', 2400),
+        Fluid: r(1650, 3300, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Women 11 to <15 yr',
+      nutrients: {
+        'PHE+TYR': r(800, 1200, 'mg/day'),
+        Protein: atLeast(50, 'g/day'),
+        Energy: r(1500, 3000, 'kcal/day', 2200),
+        Fluid: r(1500, 3000, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Women 15 to <19 yr',
+      nutrients: {
+        'PHE+TYR': r(800, 1200, 'mg/day'),
+        Protein: atLeast(55, 'g/day'),
+        Energy: r(1200, 3000, 'kcal/day', 2100),
+        Fluid: r(1200, 3000, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Women >=19 yr',
+      nutrients: {
+        'PHE+TYR': r(800, 1000, 'mg/day'),
+        Protein: atLeast(60, 'g/day'),
+        Energy: r(1400, 2500, 'kcal/day', 2100),
+        Fluid: r(1400, 2500, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Men 11 to <15 yr',
+      nutrients: {
+        'PHE+TYR': r(990, 1200, 'mg/day'),
+        Protein: atLeast(55, 'g/day'),
+        Energy: r(2000, 3700, 'kcal/day', 2700),
+        Fluid: r(2000, 3700, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Men 15 to <19 yr',
+      nutrients: {
+        'PHE+TYR': r(1000, 1500, 'mg/day'),
+        Protein: atLeast(65, 'g/day'),
+        Energy: r(2100, 3900, 'kcal/day', 2800),
+        Fluid: r(2100, 3900, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Men >=19 yr',
+      nutrients: {
+        'PHE+TYR': r(1000, 1500, 'mg/day'),
+        Protein: atLeast(70, 'g/day'),
+        Energy: r(2000, 3300, 'kcal/day', 2900),
+        Fluid: r(2000, 3300, 'mL/day'),
+      },
+    },
   ],
-  [DiseaseType.GA]: [
-    { ageLabel: 'Birth-6 months', kcalPerKg: { min: 100, max: 120 }, proPerKg: { min: 2.75, max: 3.0 }, limits: { LYS: { min: 65, max: 100 }, TRY: { min: 10, max: 20 } } },
-    { ageLabel: '6 months to 1 year', kcalPerKg: { min: 95, max: 110 }, proPerKg: { min: 2.5, max: 3.0 }, limits: { LYS: { min: 55, max: 90 }, TRY: { min: 10, max: 12 } } },
-    { ageLabel: '1 year to 4 years', kcalPerKg: { min: 80, max: 95 }, proPerKg: { min: 1.8, max: 2.6 }, limits: { LYS: { min: 50, max: 80 }, TRY: { min: 8, max: 12 } } },
-    { ageLabel: '4 years to 7 years', kcalPerKg: { min: 60, max: 80 }, proPerKg: { min: 1.6, max: 2.0 }, limits: { LYS: { min: 40, max: 70 }, TRY: { min: 7, max: 11 } } },
+
+  [DiseaseType.TYR_II_III]: [
+    {
+      ageLabel: '0 to <3 mo',
+      nutrients: {
+        PHE: r(30, 90, 'mg/kg'),
+        TYR: r(35, 90, 'mg/kg'),
+        Protein: r(3, 3.5, 'g/kg'),
+        Energy: r(95, 145, 'kcal/kg', 120),
+        Fluid: r(125, 150, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '3 to <6 mo',
+      nutrients: {
+        PHE: r(30, 70, 'mg/kg'),
+        TYR: r(30, 70, 'mg/kg'),
+        Protein: r(3, 3.5, 'g/kg'),
+        Energy: r(95, 145, 'kcal/kg', 115),
+        Fluid: r(130, 160, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '6 to <9 mo',
+      nutrients: {
+        PHE: r(25, 50, 'mg/kg'),
+        TYR: r(25, 50, 'mg/kg'),
+        Protein: r(2.5, 3, 'g/kg'),
+        Energy: r(80, 135, 'kcal/kg', 110),
+        Fluid: r(125, 145, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '9 to <12 mo',
+      nutrients: {
+        PHE: r(20, 40, 'mg/kg'),
+        TYR: r(20, 40, 'mg/kg'),
+        Protein: r(2.5, 3, 'g/kg'),
+        Energy: r(80, 135, 'kcal/kg', 105),
+        Fluid: r(120, 135, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '1 to <4 yr',
+      nutrients: {
+        PHE: r(250, 500, 'mg/day'),
+        TYR: r(200, 450, 'mg/day'),
+        Protein: atLeast(30, 'g/day'),
+        Energy: r(900, 1800, 'kcal/day', 1300),
+        Fluid: r(900, 1800, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: '4 to <7 yr',
+      nutrients: {
+        PHE: r(260, 550, 'mg/day'),
+        TYR: r(250, 500, 'mg/day'),
+        Protein: atLeast(35, 'g/day'),
+        Energy: r(1300, 2300, 'kcal/day', 1700),
+        Fluid: r(1300, 2300, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: '7 to <11 yr',
+      nutrients: {
+        PHE: r(270, 600, 'mg/day'),
+        TYR: r(260, 550, 'mg/day'),
+        Protein: atLeast(40, 'g/day'),
+        Energy: r(1650, 3300, 'kcal/day', 2400),
+        Fluid: r(1730, 3300, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Women 11 to <15 yr',
+      nutrients: {
+        PHE: r(300, 650, 'mg/day'),
+        TYR: r(290, 500, 'mg/day'),
+        Protein: atLeast(50, 'g/day'),
+        Energy: r(1500, 3000, 'kcal/day', 2200),
+        Fluid: r(1500, 3000, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Women 15 to <19 yr',
+      nutrients: {
+        PHE: r(280, 700, 'mg/day'),
+        TYR: r(270, 450, 'mg/day'),
+        Protein: atLeast(55, 'g/day'),
+        Energy: r(1200, 3000, 'kcal/day', 2100),
+        Fluid: r(1200, 3000, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Women >=19 yr',
+      nutrients: {
+        PHE: r(270, 700, 'mg/day'),
+        TYR: r(260, 450, 'mg/day'),
+        Protein: atLeast(60, 'g/day'),
+        Energy: r(1400, 2500, 'kcal/day', 2100),
+        Fluid: r(1400, 2500, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Men 11 to <15 yr',
+      nutrients: {
+        PHE: r(275, 700, 'mg/day'),
+        TYR: r(260, 550, 'mg/day'),
+        Protein: atLeast(55, 'g/day'),
+        Energy: r(2000, 3700, 'kcal/day', 2700),
+        Fluid: r(2000, 3700, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Men 15 to <19 yr',
+      nutrients: {
+        PHE: r(350, 750, 'mg/day'),
+        TYR: r(340, 550, 'mg/day'),
+        Protein: atLeast(65, 'g/day'),
+        Energy: r(2100, 3900, 'kcal/day', 2800),
+        Fluid: r(2100, 3900, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Men >=19 yr',
+      nutrients: {
+        PHE: r(340, 750, 'mg/day'),
+        TYR: r(330, 550, 'mg/day'),
+        Protein: atLeast(70, 'g/day'),
+        Energy: r(2000, 3300, 'kcal/day', 2900),
+        Fluid: r(2000, 3300, 'mL/day'),
+      },
+    },
   ],
+
   [DiseaseType.MSUD]: [
-    { ageLabel: '0-6 months', kcalPerKg: { min: 95, max: 145 }, proPerKg: { min: 2.5, max: 3.5 }, limits: { LEU: { min: 40, max: 100 }, ILE: { min: 30, max: 90 }, VAL: { min: 40, max: 95 } } },
-    { ageLabel: '7-12 months', kcalPerKg: { min: 80, max: 135 }, proPerKg: { min: 2.5, max: 3.0 }, limits: { LEU: { min: 40, max: 75 }, ILE: { min: 30, max: 70 }, VAL: { min: 30, max: 80 } } },
-    { ageLabel: '1-3 years', kcalPerKg: { min: 80, max: 130 }, proPerKg: { min: 1.5, max: 2.5 }, limits: { LEU: { min: 40, max: 70 }, ILE: { min: 20, max: 70 }, VAL: { min: 30, max: 70 } } },
-    { ageLabel: '4-8 years', kcalPerKg: { min: 50, max: 120 }, proPerKg: { min: 1.3, max: 2.0 }, limits: { LEU: { min: 35, max: 65 }, ILE: { min: 20, max: 30 }, VAL: { min: 30, max: 50 } } },
+    {
+      ageLabel: '0 to <3 mo',
+      nutrients: {
+        ILE: r(36, 60, 'mg/kg'),
+        LEU: r(60, 100, 'mg/kg'),
+        VAL: r(42, 70, 'mg/kg'),
+        Protein: r(3, 3.5, 'g/kg'),
+        Energy: r(95, 145, 'kcal/kg', 120),
+        Fluid: r(125, 150, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '3 to <6 mo',
+      nutrients: {
+        ILE: r(30, 50, 'mg/kg'),
+        LEU: r(50, 85, 'mg/kg'),
+        VAL: r(35, 60, 'mg/kg'),
+        Protein: r(3, 3.5, 'g/kg'),
+        Energy: r(95, 145, 'kcal/kg', 115),
+        Fluid: r(130, 160, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '6 to <9 mo',
+      nutrients: {
+        ILE: r(25, 40, 'mg/kg'),
+        LEU: r(40, 70, 'mg/kg'),
+        VAL: r(28, 50, 'mg/kg'),
+        Protein: r(2.5, 3, 'g/kg'),
+        Energy: r(80, 135, 'kcal/kg', 110),
+        Fluid: r(125, 145, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '9 to <12 mo',
+      nutrients: {
+        ILE: r(18, 33, 'mg/kg'),
+        LEU: r(30, 55, 'mg/kg'),
+        VAL: r(21, 38, 'mg/kg'),
+        Protein: r(2.5, 3, 'g/kg'),
+        Energy: r(80, 135, 'kcal/kg', 105),
+        Fluid: r(120, 135, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '1 to <4 yr',
+      nutrients: {
+        ILE: r(165, 325, 'mg/day'),
+        LEU: r(275, 535, 'mg/day'),
+        VAL: r(190, 400, 'mg/day'),
+        Protein: atLeast(30, 'g/day'),
+        Energy: r(900, 1800, 'kcal/day', 1300),
+        Fluid: r(900, 1800, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: '4 to <7 yr',
+      nutrients: {
+        ILE: r(215, 420, 'mg/day'),
+        LEU: r(360, 695, 'mg/day'),
+        VAL: r(250, 490, 'mg/day'),
+        Protein: atLeast(35, 'g/day'),
+        Energy: r(1300, 2300, 'kcal/day', 1700),
+        Fluid: r(1300, 2300, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: '7 to <11 yr',
+      nutrients: {
+        ILE: r(245, 470, 'mg/day'),
+        LEU: r(410, 785, 'mg/day'),
+        VAL: r(285, 550, 'mg/day'),
+        Protein: atLeast(40, 'g/day'),
+        Energy: r(1650, 3300, 'kcal/day', 2400),
+        Fluid: r(1650, 3300, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Women 11 to <15 yr',
+      nutrients: {
+        ILE: r(330, 445, 'mg/day'),
+        LEU: r(550, 740, 'mg/day'),
+        VAL: r(385, 520, 'mg/day'),
+        Protein: atLeast(50, 'g/day'),
+        Energy: r(1500, 3000, 'kcal/day', 2200),
+        Fluid: r(1500, 3000, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Women 15 to <19 yr',
+      nutrients: {
+        ILE: r(330, 445, 'mg/day'),
+        LEU: r(550, 740, 'mg/day'),
+        VAL: r(385, 520, 'mg/day'),
+        Protein: atLeast(55, 'g/day'),
+        Energy: r(1200, 3000, 'kcal/day', 2100),
+        Fluid: r(1200, 3000, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Women >=19 yr',
+      nutrients: {
+        ILE: r(300, 450, 'mg/day'),
+        LEU: r(400, 620, 'mg/day'),
+        VAL: r(420, 650, 'mg/day'),
+        Protein: atLeast(60, 'g/day'),
+        Energy: r(1400, 2500, 'kcal/day', 2100),
+        Fluid: r(1400, 2500, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Men 11 to <15 yr',
+      nutrients: {
+        ILE: r(325, 435, 'mg/day'),
+        LEU: r(540, 720, 'mg/day'),
+        VAL: r(375, 505, 'mg/day'),
+        Protein: atLeast(55, 'g/day'),
+        Energy: r(2000, 3700, 'kcal/day', 2700),
+        Fluid: r(2000, 3700, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Men 15 to <19 yr',
+      nutrients: {
+        ILE: r(425, 570, 'mg/day'),
+        LEU: r(705, 945, 'mg/day'),
+        VAL: r(495, 665, 'mg/day'),
+        Protein: atLeast(65, 'g/day'),
+        Energy: r(2100, 3900, 'kcal/day', 2800),
+        Fluid: r(2100, 3900, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Men >=19 yr',
+      nutrients: {
+        ILE: r(575, 700, 'mg/day'),
+        LEU: r(800, 1100, 'mg/day'),
+        VAL: r(560, 800, 'mg/day'),
+        Protein: atLeast(70, 'g/day'),
+        Energy: r(2000, 3300, 'kcal/day', 2900),
+        Fluid: r(2000, 3300, 'mL/day'),
+      },
+    },
   ],
+
+  [DiseaseType.LEU_CATABOLISM]: [
+    {
+      ageLabel: '0 to <3 mo',
+      nutrients: {
+        LEU: r(80, 150, 'mg/kg'),
+        Protein: r(3, 3.5, 'g/kg'),
+        Energy: r(95, 145, 'kcal/kg', 120),
+        Fluid: r(125, 160, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '3 to <6 mo',
+      nutrients: {
+        LEU: r(70, 140, 'mg/kg'),
+        Protein: r(3, 3.5, 'g/kg'),
+        Energy: r(95, 145, 'kcal/kg', 115),
+        Fluid: r(130, 160, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '6 to <9 mo',
+      nutrients: {
+        LEU: r(60, 130, 'mg/kg'),
+        Protein: r(2.5, 3, 'g/kg'),
+        Energy: r(80, 135, 'kcal/kg', 110),
+        Fluid: r(125, 145, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '9 to <12 mo',
+      nutrients: {
+        LEU: r(50, 120, 'mg/kg'),
+        Protein: r(2.5, 3, 'g/kg'),
+        Energy: r(80, 135, 'kcal/kg', 105),
+        Fluid: r(120, 135, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '1 to <4 yr',
+      nutrients: {
+        LEU: r(500, 900, 'mg/day'),
+        Protein: atLeast(30, 'g/day'),
+        Energy: r(900, 1800, 'kcal/day', 1300),
+        Fluid: r(900, 1800, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: '4 to <7 yr',
+      nutrients: {
+        LEU: r(600, 900, 'mg/day'),
+        Protein: atLeast(35, 'g/day'),
+        Energy: r(1300, 2300, 'kcal/day', 1700),
+        Fluid: r(1300, 2300, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: '7 to <11 yr',
+      nutrients: {
+        LEU: r(700, 900, 'mg/day'),
+        Protein: atLeast(40, 'g/day'),
+        Energy: r(1650, 3300, 'kcal/day', 2400),
+        Fluid: r(1730, 3300, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Women 11 to <15 yr',
+      nutrients: {
+        LEU: r(700, 900, 'mg/day'),
+        Protein: atLeast(50, 'g/day'),
+        Energy: r(1500, 3000, 'kcal/day', 2200),
+        Fluid: r(1500, 3000, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Women 15 to <19 yr',
+      nutrients: {
+        LEU: r(620, 820, 'mg/day'),
+        Protein: atLeast(55, 'g/day'),
+        Energy: r(1200, 3000, 'kcal/day', 2100),
+        Fluid: r(1200, 3000, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Women >=19 yr',
+      nutrients: {
+        LEU: r(620, 820, 'mg/day'),
+        Protein: atLeast(60, 'g/day'),
+        Energy: r(1400, 2500, 'kcal/day', 2100),
+        Fluid: r(1400, 2500, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Men 11 to <15 yr',
+      nutrients: {
+        LEU: r(1100, 1500, 'mg/day'),
+        Protein: atLeast(55, 'g/day'),
+        Energy: r(2000, 3700, 'kcal/day', 2700),
+        Fluid: r(2000, 3700, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Men 15 to <19 yr',
+      nutrients: {
+        LEU: r(1100, 1500, 'mg/day'),
+        Protein: atLeast(65, 'g/day'),
+        Energy: r(2100, 3900, 'kcal/day', 2800),
+        Fluid: r(2100, 3900, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Men >=19 yr',
+      nutrients: {
+        LEU: r(1000, 1400, 'mg/day'),
+        Protein: atLeast(70, 'g/day'),
+        Energy: r(2000, 3300, 'kcal/day', 2900),
+        Fluid: r(2000, 3300, 'mL/day'),
+      },
+    },
+  ],
+
+  [DiseaseType.BETA_KETOTHIOLASE]: [
+    {
+      ageLabel: '0 to <3 mo',
+      nutrients: {
+        ILE: r(90, 140, 'mg/kg'),
+        LEU: atLeast(180, 'mg/kg'),
+        VAL: atLeast(100, 'mg/kg'),
+        Protein: r(3, 3.5, 'g/kg'),
+        Energy: r(95, 145, 'kcal/kg', 120),
+        Fluid: r(125, 150, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '3 to <6 mo',
+      nutrients: {
+        ILE: r(85, 135, 'mg/kg'),
+        LEU: atLeast(160, 'mg/kg'),
+        VAL: atLeast(90, 'mg/kg'),
+        Protein: r(3, 3.5, 'g/kg'),
+        Energy: r(95, 145, 'kcal/kg', 115),
+        Fluid: r(130, 160, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '6 to <9 mo',
+      nutrients: {
+        ILE: r(80, 135, 'mg/kg'),
+        LEU: atLeast(150, 'mg/kg'),
+        VAL: atLeast(80, 'mg/kg'),
+        Protein: r(2.5, 3, 'g/kg'),
+        Energy: r(80, 135, 'kcal/kg', 110),
+        Fluid: r(125, 145, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '9 to <12 mo',
+      nutrients: {
+        ILE: r(75, 125, 'mg/kg'),
+        LEU: atLeast(140, 'mg/kg'),
+        VAL: atLeast(70, 'mg/kg'),
+        Protein: r(2.5, 3, 'g/kg'),
+        Energy: r(80, 135, 'kcal/kg', 105),
+        Fluid: r(120, 135, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '1 to <4 yr',
+      nutrients: {
+        ILE: r(750, 1000, 'mg/day'),
+        LEU: atLeast(1000, 'mg/day'),
+        VAL: atLeast(750, 'mg/day'),
+        Protein: atLeast(30, 'g/day'),
+        Energy: r(900, 1800, 'kcal/day', 1300),
+        Fluid: r(900, 1800, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: '4 to <7 yr',
+      nutrients: {
+        ILE: r(850, 1100, 'mg/day'),
+        LEU: atLeast(1150, 'mg/day'),
+        VAL: atLeast(850, 'mg/day'),
+        Protein: atLeast(35, 'g/day'),
+        Energy: r(1300, 2300, 'kcal/day', 1700),
+        Fluid: r(1300, 2300, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: '7 to <11 yr',
+      nutrients: {
+        ILE: r(1000, 1300, 'mg/day'),
+        LEU: atLeast(1300, 'mg/day'),
+        VAL: atLeast(1000, 'mg/day'),
+        Protein: atLeast(40, 'g/day'),
+        Energy: r(1650, 3300, 'kcal/day', 2400),
+        Fluid: r(1650, 3300, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Women 11 to <15 yr',
+      nutrients: {
+        ILE: r(1200, 1500, 'mg/day'),
+        LEU: atLeast(1900, 'mg/day'),
+        VAL: atLeast(1800, 'mg/day'),
+        Protein: atLeast(50, 'g/day'),
+        Energy: r(1500, 3000, 'kcal/day', 2200),
+        Fluid: r(1500, 3000, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Women 15 to <19 yr',
+      nutrients: {
+        ILE: r(1000, 1300, 'mg/day'),
+        LEU: atLeast(1300, 'mg/day'),
+        VAL: atLeast(1000, 'mg/day'),
+        Protein: atLeast(55, 'g/day'),
+        Energy: r(1200, 3000, 'kcal/day', 2100),
+        Fluid: r(1200, 3000, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Women >=19 yr',
+      nutrients: {
+        ILE: r(1000, 1300, 'mg/day'),
+        LEU: atLeast(1330, 'mg/day'),
+        VAL: atLeast(1000, 'mg/day'),
+        Protein: atLeast(60, 'g/day'),
+        Energy: r(1400, 2500, 'kcal/day', 2100),
+        Fluid: r(1400, 2500, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Men 11 to <15 yr',
+      nutrients: {
+        ILE: r(1000, 1300, 'mg/day'),
+        LEU: atLeast(1900, 'mg/day'),
+        VAL: atLeast(1150, 'mg/day'),
+        Protein: atLeast(55, 'g/day'),
+        Energy: r(2000, 3700, 'kcal/day', 2700),
+        Fluid: r(2000, 3700, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Men 15 to <19 yr',
+      nutrients: {
+        ILE: r(1300, 1650, 'mg/day'),
+        LEU: atLeast(1650, 'mg/day'),
+        VAL: atLeast(1300, 'mg/day'),
+        Protein: atLeast(65, 'g/day'),
+        Energy: r(2100, 3900, 'kcal/day', 2800),
+        Fluid: r(2100, 3900, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Men >=19 yr',
+      nutrients: {
+        ILE: r(1300, 1650, 'mg/day'),
+        LEU: atLeast(1650, 'mg/day'),
+        VAL: atLeast(1300, 'mg/day'),
+        Protein: atLeast(70, 'g/day'),
+        Energy: r(2000, 3300, 'kcal/day', 2900),
+        Fluid: r(2000, 3300, 'mL/day'),
+      },
+    },
+  ],
+
+  [DiseaseType.HOMOCYSTINURIA]: [
+    {
+      ageLabel: '0 to <3 mo',
+      nutrients: {
+        MET: r(15, 30, 'mg/kg'),
+        CYS: fixed(300, 'mg/kg'),
+        Protein: r(3, 3.5, 'g/kg'),
+        Energy: r(95, 145, 'kcal/kg', 120),
+        Fluid: r(125, 150, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '3 to <6 mo',
+      nutrients: {
+        MET: r(10, 25, 'mg/kg'),
+        CYS: fixed(250, 'mg/kg'),
+        Protein: r(3, 3.5, 'g/kg'),
+        Energy: r(95, 145, 'kcal/kg', 115),
+        Fluid: r(130, 160, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '6 to <9 mo',
+      nutrients: {
+        MET: r(10, 25, 'mg/kg'),
+        CYS: fixed(200, 'mg/kg'),
+        Protein: r(2.5, 3, 'g/kg'),
+        Energy: r(80, 135, 'kcal/kg', 110),
+        Fluid: r(125, 145, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '9 to <12 mo',
+      nutrients: {
+        MET: r(10, 20, 'mg/kg'),
+        CYS: fixed(200, 'mg/kg'),
+        Protein: r(2.5, 3, 'g/kg'),
+        Energy: r(80, 135, 'kcal/kg', 105),
+        Fluid: r(120, 135, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '1 to <4 yr',
+      nutrients: {
+        MET: r(10, 20, 'mg/kg'),
+        CYS: r(100, 200, 'mg/kg'),
+        Protein: atLeast(30, 'g/day'),
+        Energy: r(900, 1800, 'kcal/day', 1300),
+        Fluid: r(900, 1800, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: '4 to <7 yr',
+      nutrients: {
+        MET: r(8, 16, 'mg/kg'),
+        CYS: r(100, 200, 'mg/kg'),
+        Protein: atLeast(35, 'g/day'),
+        Energy: r(1300, 2300, 'kcal/day', 1700),
+        Fluid: r(1300, 2300, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: '7 to <11 yr',
+      nutrients: {
+        MET: r(6, 12, 'mg/kg'),
+        CYS: r(100, 200, 'mg/kg'),
+        Protein: atLeast(40, 'g/day'),
+        Energy: r(1650, 3300, 'kcal/day', 2400),
+        Fluid: r(1650, 3300, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Women 11 to <15 yr',
+      nutrients: {
+        MET: r(6, 14, 'mg/kg'),
+        CYS: r(50, 150, 'mg/kg'),
+        Protein: atLeast(50, 'g/day'),
+        Energy: r(1500, 3000, 'kcal/day', 2200),
+        Fluid: r(1500, 3000, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Women 15 to <19 yr',
+      nutrients: {
+        MET: r(6, 12, 'mg/kg'),
+        CYS: r(25, 125, 'mg/kg'),
+        Protein: atLeast(55, 'g/day'),
+        Energy: r(1200, 3000, 'kcal/day', 2100),
+        Fluid: r(1200, 3000, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Women >=19 yr',
+      nutrients: {
+        MET: r(4, 10, 'mg/kg'),
+        CYS: r(25, 100, 'mg/kg'),
+        Protein: atLeast(60, 'g/day'),
+        Energy: r(1400, 2500, 'kcal/day', 2100),
+        Fluid: r(1400, 2500, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Men 11 to <15 yr',
+      nutrients: {
+        MET: r(6, 14, 'mg/kg'),
+        CYS: r(50, 150, 'mg/kg'),
+        Protein: atLeast(55, 'g/day'),
+        Energy: r(2000, 3700, 'kcal/day', 2700),
+        Fluid: r(2000, 3700, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Men 15 to <19 yr',
+      nutrients: {
+        MET: r(6, 16, 'mg/kg'),
+        CYS: r(25, 125, 'mg/kg'),
+        Protein: atLeast(65, 'g/day'),
+        Energy: r(2100, 3900, 'kcal/day', 2800),
+        Fluid: r(2100, 3900, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Men >=19 yr',
+      nutrients: {
+        MET: r(6, 15, 'mg/kg'),
+        CYS: r(25, 100, 'mg/kg'),
+        Protein: atLeast(70, 'g/day'),
+        Energy: r(2000, 3300, 'kcal/day', 2900),
+        Fluid: r(2000, 3300, 'mL/day'),
+      },
+    },
+  ],
+
+  [DiseaseType.GA_TYPE_I]: [
+    {
+      ageLabel: '0 to <3 mo',
+      nutrients: {
+        LYS: r(80, 100, 'mg/kg'),
+        TRP: r(10, 20, 'mg/kg'),
+        Protein: r(3, 3.5, 'g/kg'),
+        Energy: r(95, 145, 'kcal/kg', 120),
+        Fluid: r(125, 150, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '3 to <6 mo',
+      nutrients: {
+        LYS: r(70, 90, 'mg/kg'),
+        TRP: r(10, 15, 'mg/kg'),
+        Protein: r(3, 3.5, 'g/kg'),
+        Energy: r(95, 145, 'kcal/kg', 115),
+        Fluid: r(130, 160, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '6 to <9 mo',
+      nutrients: {
+        LYS: r(60, 80, 'mg/kg'),
+        TRP: r(10, 12, 'mg/kg'),
+        Protein: r(2.5, 3, 'g/kg'),
+        Energy: r(80, 135, 'kcal/kg', 110),
+        Fluid: r(125, 145, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '9 to <12 mo',
+      nutrients: {
+        LYS: r(50, 70, 'mg/kg'),
+        TRP: r(10, 12, 'mg/kg'),
+        Protein: r(2.5, 3, 'g/kg'),
+        Energy: r(80, 135, 'kcal/kg', 105),
+        Fluid: r(120, 135, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '1 to <4 yr',
+      nutrients: {
+        LYS: r(55, 65, 'mg/kg'),
+        TRP: r(8, 12, 'mg/kg'),
+        Protein: atLeast(30, 'g/day'),
+        Energy: r(900, 1800, 'kcal/day', 1300),
+        Fluid: r(900, 1800, 'mL/day', 1300),
+      },
+    },
+    {
+      ageLabel: '4 to <7 yr',
+      nutrients: {
+        LYS: r(45, 55, 'mg/kg'),
+        TRP: r(7, 11, 'mg/kg'),
+        Protein: atLeast(35, 'g/day'),
+        Energy: r(1300, 2300, 'kcal/day', 1700),
+        Fluid: r(1300, 2300, 'mL/day', 1700),
+      },
+    },
+    {
+      ageLabel: '7 to <11 yr',
+      nutrients: {
+        LYS: r(35, 45, 'mg/kg'),
+        TRP: r(4, 10, 'mg/kg'),
+        Protein: atLeast(40, 'g/day'),
+        Energy: r(1650, 3300, 'kcal/day', 2400),
+        Fluid: r(1650, 3300, 'mL/day', 2400),
+      },
+    },
+    {
+      ageLabel: 'Women 11 to <15 yr',
+      nutrients: {
+        LYS: r(30, 40, 'mg/kg'),
+        TRP: r(4, 6, 'mg/kg'),
+        Protein: atLeast(50, 'g/day'),
+        Energy: r(1500, 3000, 'kcal/day', 2200),
+        Fluid: r(1500, 3000, 'mL/day', 2200),
+      },
+    },
+    {
+      ageLabel: 'Women 15 to <19 yr',
+      nutrients: {
+        LYS: r(20, 30, 'mg/kg'),
+        TRP: r(3, 5, 'mg/kg'),
+        Protein: atLeast(55, 'g/day'),
+        Energy: r(1200, 3000, 'kcal/day', 2100),
+        Fluid: r(1200, 3000, 'mL/day', 2100),
+      },
+    },
+    {
+      ageLabel: 'Women >=19 yr',
+      nutrients: {
+        LYS: r(10, 20, 'mg/kg'),
+        TRP: r(3, 4, 'mg/kg'),
+        Protein: atLeast(60, 'g/day'),
+        Energy: r(1400, 2500, 'kcal/day', 2100),
+        Fluid: r(1400, 2500, 'mL/day', 2100),
+      },
+    },
+    {
+      ageLabel: 'Men 11 to <15 yr',
+      nutrients: {
+        LYS: r(30, 40, 'mg/kg'),
+        TRP: r(4, 6, 'mg/kg'),
+        Protein: atLeast(60, 'g/day'),
+        Energy: r(2000, 3700, 'kcal/day', 2700),
+        Fluid: r(2000, 3700, 'mL/day', 2700),
+      },
+    },
+    {
+      ageLabel: 'Men 15 to <19 yr',
+      nutrients: {
+        LYS: r(35, 45, 'mg/kg'),
+        TRP: r(6, 8, 'mg/kg'),
+        Protein: atLeast(65, 'g/day'),
+        Energy: r(2100, 3900, 'kcal/day', 2800),
+        Fluid: r(2100, 3900, 'mL/day', 2800),
+      },
+    },
+    {
+      ageLabel: 'Men >=19 yr',
+      nutrients: {
+        LYS: r(35, 45, 'mg/kg'),
+        TRP: r(3, 5, 'mg/kg'),
+        Protein: atLeast(65, 'g/day'),
+        Energy: r(2000, 3300, 'kcal/day', 2900),
+        Fluid: r(2000, 3300, 'mL/day', 2900),
+      },
+    },
+  ],
+
+  [DiseaseType.GA_TYPE_II]: [
+    {
+      ageLabel: '0 to <3 mo',
+      nutrients: {
+        Protein: r(1.7, 2, 'g/kg'),
+        Fat: r(20, 25, '%energy'),
+        Energy: r(95, 145, 'kcal/kg', 120),
+        Fluid: r(125, 150, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '3 to <6 mo',
+      nutrients: {
+        Protein: r(1.4, 1.7, 'g/kg'),
+        Fat: r(20, 25, '%energy'),
+        Energy: r(95, 145, 'kcal/kg', 115),
+        Fluid: r(130, 160, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '6 to <9 mo',
+      nutrients: {
+        Protein: r(1.1, 1.4, 'g/kg'),
+        Fat: r(20, 25, '%energy'),
+        Energy: r(80, 135, 'kcal/kg', 110),
+        Fluid: r(125, 145, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '9 to <12 mo',
+      nutrients: {
+        Protein: r(1.1, 1.4, 'g/kg'),
+        Fat: r(20, 25, '%energy'),
+        Energy: r(80, 135, 'kcal/kg', 105),
+        Fluid: r(120, 135, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '1 to <4 yr',
+      nutrients: {
+        Protein: r(15, 23, 'g/day'),
+        Fat: r(20, 25, '%energy'),
+        Energy: r(900, 1800, 'kcal/day', 1300),
+        Fluid: r(900, 1800, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: '4 to <7 yr',
+      nutrients: {
+        Protein: r(20, 30, 'g/day'),
+        Fat: r(20, 25, '%energy'),
+        Energy: r(1300, 2300, 'kcal/day', 1700),
+        Fluid: r(1300, 2300, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: '7 to <11 yr',
+      nutrients: {
+        Protein: r(25, 34, 'g/day'),
+        Fat: r(20, 25, '%energy'),
+        Energy: r(1650, 3300, 'kcal/day', 2400),
+        Fluid: r(1650, 3300, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Women 11 to <15 yr',
+      nutrients: {
+        Protein: r(30, 40, 'g/day'),
+        Fat: r(20, 25, '%energy'),
+        Energy: r(1500, 3000, 'kcal/day', 2200),
+        Fluid: r(1500, 3000, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Women 15 to <19 yr',
+      nutrients: {
+        Protein: r(40, 45, 'g/day'),
+        Fat: r(20, 25, '%energy'),
+        Energy: r(1200, 3000, 'kcal/day', 2100),
+        Fluid: r(1200, 3000, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Women >=19 yr',
+      nutrients: {
+        Protein: r(45, 50, 'g/day'),
+        Fat: r(20, 25, '%energy'),
+        Energy: r(1400, 2500, 'kcal/day', 2100),
+        Fluid: r(1400, 2500, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Men 11 to <15 yr',
+      nutrients: {
+        Protein: r(40, 42, 'g/day'),
+        Fat: r(20, 25, '%energy'),
+        Energy: r(2000, 3700, 'kcal/day', 2700),
+        Fluid: r(2000, 3700, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Men 15 to <19 yr',
+      nutrients: {
+        Protein: r(42, 49, 'g/day'),
+        Fat: r(20, 25, '%energy'),
+        Energy: r(2100, 3900, 'kcal/day', 2800),
+        Fluid: r(2100, 3900, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Men >=19 yr',
+      nutrients: {
+        Protein: r(49, 55, 'g/day'),
+        Fat: r(20, 25, '%energy'),
+        Energy: r(2000, 3300, 'kcal/day', 2900),
+        Fluid: r(2000, 3300, 'mL/day'),
+      },
+    },
+  ],
+
+  [DiseaseType.LPI]: [
+    {
+      ageLabel: '0 to <3 mo',
+      nutrients: {
+        Protein: r(1.5, 2.2, 'g/kg'),
+        Energy: r(125, 140, 'kcal/kg'),
+        Fluid: r(130, 160, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '3 to <6 mo',
+      nutrients: {
+        Protein: r(1.5, 2, 'g/kg'),
+        Energy: r(120, 130, 'kcal/kg'),
+        Fluid: r(130, 160, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '6 to <9 mo',
+      nutrients: {
+        Protein: r(1.25, 1.8, 'g/kg'),
+        Energy: r(115, 130, 'kcal/kg'),
+        Fluid: r(125, 150, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '9 to <12 mo',
+      nutrients: {
+        Protein: r(1.15, 1.6, 'g/kg'),
+        Energy: r(110, 120, 'kcal/kg'),
+        Fluid: r(120, 130, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '1 to <4 yr',
+      nutrients: {
+        Protein: r(10, 13, 'g/day'),
+        Energy: r(945, 1890, 'kcal/day'),
+        Fluid: r(945, 1890, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: '4 to <7 yr',
+      nutrients: {
+        Protein: r(14, 20, 'g/day'),
+        Energy: r(1365, 2415, 'kcal/day'),
+        Fluid: r(1365, 2445, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: '7 to <11 yr',
+      nutrients: {
+        Protein: r(20, 28, 'g/day'),
+        Energy: r(1730, 3465, 'kcal/day'),
+        Fluid: r(1730, 3465, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Women 11 to <15 yr',
+      nutrients: {
+        Protein: r(30, 40, 'g/day'),
+        Energy: r(1575, 3150, 'kcal/day'),
+        Fluid: r(1575, 3150, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Women 15 to <19 yr',
+      nutrients: {
+        Protein: r(40, 45, 'g/day'),
+        Energy: r(1260, 3150, 'kcal/day'),
+        Fluid: r(1260, 3150, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Women >=19 yr',
+      nutrients: {
+        Protein: r(45, 47, 'g/day'),
+        Energy: r(1785, 2625, 'kcal/day'),
+        Fluid: r(1875, 2525, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Men 11 to <15 yr',
+      nutrients: {
+        Protein: r(30, 42, 'g/day'),
+        Energy: r(2100, 3885, 'kcal/day'),
+        Fluid: r(2100, 3885, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Men 15 to <19 yr',
+      nutrients: {
+        Protein: r(42, 49, 'g/day'),
+        Energy: r(2200, 4095, 'kcal/day'),
+        Fluid: r(2200, 4095, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Men >=19 yr',
+      nutrients: {
+        Protein: r(49, 55, 'g/day'),
+        Energy: r(2625, 3465, 'kcal/day'),
+        Fluid: r(2625, 3465, 'mL/day'),
+      },
+    },
+  ],
+
+  [DiseaseType.MMA_PA]: [
+    {
+      ageLabel: '0 to <3 mo',
+      nutrients: {
+        ILE: r(75, 120, 'mg/kg'),
+        MET: r(30, 50, 'mg/kg'),
+        THR: r(75, 135, 'mg/kg'),
+        VAL: r(75, 105, 'mg/kg'),
+        Protein: r(2.5, 3.5, 'g/kg'),
+        Energy: r(95, 145, 'kcal/kg', 130),
+        Fluid: r(125, 200, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '3 to <6 mo',
+      nutrients: {
+        ILE: r(65, 100, 'mg/kg'),
+        MET: r(20, 45, 'mg/kg'),
+        THR: r(60, 100, 'mg/kg'),
+        VAL: r(65, 90, 'mg/kg'),
+        Protein: r(2.5, 3.5, 'g/kg'),
+        Energy: r(95, 145, 'kcal/kg', 125),
+        Fluid: r(130, 160, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '6 to <9 mo',
+      nutrients: {
+        ILE: r(50, 90, 'mg/kg'),
+        MET: r(10, 40, 'mg/kg'),
+        THR: r(40, 75, 'mg/kg'),
+        VAL: r(35, 75, 'mg/kg'),
+        Protein: r(2.5, 3, 'g/kg'),
+        Energy: r(80, 135, 'kcal/kg', 120),
+        Fluid: r(125, 145, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '9 to <12 mo',
+      nutrients: {
+        ILE: r(40, 80, 'mg/kg'),
+        MET: r(10, 30, 'mg/kg'),
+        THR: r(20, 40, 'mg/kg'),
+        VAL: r(30, 60, 'mg/kg'),
+        Protein: r(2.5, 3, 'g/kg'),
+        Energy: r(80, 135, 'kcal/kg', 115),
+        Fluid: r(120, 135, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '1 to <4 yr',
+      nutrients: {
+        ILE: r(485, 735, 'mg/day'),
+        MET: r(180, 390, 'mg/day'),
+        THR: r(415, 600, 'mg/day'),
+        VAL: r(550, 830, 'mg/day'),
+        Protein: atLeast(30, 'g/day'),
+        Energy: r(900, 1800, 'kcal/day', 1300),
+        Fluid: r(900, 1800, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: '4 to <7 yr',
+      nutrients: {
+        ILE: r(630, 960, 'mg/day'),
+        MET: r(255, 510, 'mg/day'),
+        THR: r(540, 780, 'mg/day'),
+        VAL: r(720, 1080, 'mg/day'),
+        Protein: atLeast(35, 'g/day'),
+        Energy: r(1300, 2300, 'kcal/day', 1700),
+        Fluid: r(1300, 2300, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: '7 to <11 yr',
+      nutrients: {
+        ILE: r(715, 1090, 'mg/day'),
+        MET: r(290, 580, 'mg/day'),
+        THR: r(610, 885, 'mg/day'),
+        VAL: r(815, 1225, 'mg/day'),
+        Protein: atLeast(40, 'g/day'),
+        Energy: r(1650, 3300, 'kcal/day', 2400),
+        Fluid: r(1650, 3300, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Women 11 to <15 yr',
+      nutrients: {
+        ILE: r(965, 1470, 'mg/day'),
+        MET: r(390, 780, 'mg/day'),
+        THR: r(830, 1195, 'mg/day'),
+        VAL: r(1105, 1655, 'mg/day'),
+        Protein: atLeast(55, 'g/day'),
+        Energy: r(1500, 3000, 'kcal/day', 2200),
+        Fluid: r(1500, 3000, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Women 15 to <19 yr',
+      nutrients: {
+        ILE: r(965, 1470, 'mg/day'),
+        MET: r(275, 780, 'mg/day'),
+        THR: r(830, 1195, 'mg/day'),
+        VAL: r(1105, 1655, 'mg/day'),
+        Protein: atLeast(55, 'g/day'),
+        Energy: r(1200, 3000, 'kcal/day', 2100),
+        Fluid: r(1200, 3000, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Women >=19 yr',
+      nutrients: {
+        ILE: r(925, 1410, 'mg/day'),
+        MET: r(265, 750, 'mg/day'),
+        THR: r(790, 1145, 'mg/day'),
+        VAL: r(790, 1585, 'mg/day'),
+        Protein: atLeast(50, 'g/day'),
+        Energy: r(1400, 2500, 'kcal/day', 2100),
+        Fluid: r(1400, 2500, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Men 11 to <15 yr',
+      nutrients: {
+        ILE: r(540, 765, 'mg/day'),
+        MET: r(290, 765, 'mg/day'),
+        THR: r(810, 1170, 'mg/day'),
+        VAL: r(1080, 1515, 'mg/day'),
+        Protein: atLeast(50, 'g/day'),
+        Energy: r(2000, 3700, 'kcal/day', 2700),
+        Fluid: r(2000, 3700, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Men 15 to <19 yr',
+      nutrients: {
+        ILE: r(670, 950, 'mg/day'),
+        MET: r(475, 950, 'mg/day'),
+        THR: r(1010, 1455, 'mg/day'),
+        VAL: r(1345, 2015, 'mg/day'),
+        Protein: atLeast(65, 'g/day'),
+        Energy: r(2100, 3900, 'kcal/day', 2800),
+        Fluid: r(2100, 3900, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Men >=19 yr',
+      nutrients: {
+        ILE: r(1175, 1190, 'mg/day'),
+        MET: r(475, 950, 'mg/day'),
+        THR: r(1010, 1455, 'mg/day'),
+        VAL: r(1345, 2015, 'mg/day'),
+        Protein: atLeast(65, 'g/day'),
+        Energy: r(2000, 3300, 'kcal/day', 2900),
+        Fluid: r(2000, 3300, 'mL/day'),
+      },
+    },
+  ],
+
+  [DiseaseType.GALACTOSEMIA]: [
+    {
+      ageLabel: '0 to <3 mo',
+      nutrients: {
+        Protein: r(3, 3.5, 'g/kg'),
+        Energy: r(95, 145, 'kcal/kg', 120),
+        Fluid: r(125, 150, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '3 to <6 mo',
+      nutrients: {
+        Protein: r(3, 3.5, 'g/kg'),
+        Energy: r(95, 145, 'kcal/kg', 115),
+        Fluid: r(130, 160, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '6 to <9 mo',
+      nutrients: {
+        Protein: r(2.5, 3, 'g/kg'),
+        Energy: r(80, 135, 'kcal/kg', 110),
+        Fluid: r(125, 145, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '9 to <12 mo',
+      nutrients: {
+        Protein: r(2.5, 3, 'g/kg'),
+        Energy: r(80, 135, 'kcal/kg', 105),
+        Fluid: r(120, 135, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '1 to <4 yr',
+      nutrients: {
+        Protein: atLeast(30, 'g/day'),
+        Energy: r(900, 1800, 'kcal/day', 1300),
+        Fluid: r(900, 1800, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: '4 to <7 yr',
+      nutrients: {
+        Protein: atLeast(35, 'g/day'),
+        Energy: r(1300, 2300, 'kcal/day', 1700),
+        Fluid: r(1300, 2300, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: '7 to <11 yr',
+      nutrients: {
+        Protein: atLeast(40, 'g/day'),
+        Energy: r(1650, 3300, 'kcal/day', 2400),
+        Fluid: r(1650, 3300, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Women 11 to <15 yr',
+      nutrients: {
+        Protein: atLeast(50, 'g/day'),
+        Energy: r(1500, 3000, 'kcal/day', 2200),
+        Fluid: r(1500, 3000, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Women 15 to <19 yr',
+      nutrients: {
+        Protein: atLeast(50, 'g/day'),
+        Energy: r(1200, 3000, 'kcal/day', 2100),
+        Fluid: r(1200, 3000, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Women >=19 yr',
+      nutrients: {
+        Protein: atLeast(50, 'g/day'),
+        Energy: r(1400, 2500, 'kcal/day', 2100),
+        Fluid: r(1400, 2500, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Men 11 to <15 yr',
+      nutrients: {
+        Protein: atLeast(55, 'g/day'),
+        Energy: r(2000, 3700, 'kcal/day', 2700),
+        Fluid: r(2000, 3700, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Men 15 to <19 yr',
+      nutrients: {
+        Protein: atLeast(65, 'g/day'),
+        Energy: r(2100, 3900, 'kcal/day', 2800),
+        Fluid: r(2100, 3900, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Men >=19 yr',
+      nutrients: {
+        Protein: atLeast(65, 'g/day'),
+        Energy: r(2000, 3300, 'kcal/day', 2900),
+        Fluid: r(2000, 3300, 'mL/day'),
+      },
+    },
+  ],
+
   [DiseaseType.UCD]: [
-    { ageLabel: '0-1 year', kcalPerKg: { min: 100, max: 120 }, proPerKg: { min: 1.2, max: 2.2 }, ucdPro: { medical: { min: 0.4, max: 1.1 }, intact: { min: 0.8, max: 1.1 } } },
-    { ageLabel: '1-7 years', kcalPerKg: { min: 80, max: 100 }, proPerKg: { min: 1.0, max: 1.2 }, ucdPro: { medical: { min: 0.3, max: 0.7 }, intact: { min: 0.7, max: 0.8 } } },
-    { ageLabel: '7-19 years', kcalPerKg: { min: 60, max: 80 }, proPerKg: { min: 0.8, max: 1.4 }, ucdPro: { medical: { min: 0.4, max: 0.7 }, intact: { min: 0.3, max: 1.0 } } },
-  ]
+    {
+      ageLabel: '0 to <3 mo',
+      nutrients: {
+        Protein: r(1.25, 2.2, 'g/kg'),
+        Energy: r(125, 150, 'kcal/kg'),
+        Fluid: r(130, 160, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '3 to <6 mo',
+      nutrients: {
+        Protein: r(1.8, 2, 'g/kg'),
+        Energy: r(120, 140, 'kcal/kg'),
+        Fluid: r(130, 160, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '6 to <9 mo',
+      nutrients: {
+        Protein: r(1.6, 1.8, 'g/kg'),
+        Energy: r(115, 130, 'kcal/kg'),
+        Fluid: r(125, 150, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '9 to <12 mo',
+      nutrients: {
+        Protein: r(1.4, 1.6, 'g/kg'),
+        Energy: r(110, 120, 'kcal/kg'),
+        Fluid: r(120, 130, 'mL/kg'),
+      },
+    },
+    {
+      ageLabel: '1 to <4 yr',
+      nutrients: {
+        Protein: r(8, 12, 'g/day'),
+        Energy: r(945, 1890, 'kcal/day'),
+        Fluid: r(945, 1890, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: '4 to <7 yr',
+      nutrients: {
+        Protein: r(12, 15, 'g/day'),
+        Energy: r(1365, 2415, 'kcal/day'),
+        Fluid: r(1365, 2415, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: '7 to <11 yr',
+      nutrients: {
+        Protein: r(14, 17, 'g/day'),
+        Energy: r(1730, 3465, 'kcal/day'),
+        Fluid: r(1730, 3465, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Women 11 to <15 yr',
+      nutrients: {
+        Protein: r(20, 23, 'g/day'),
+        Energy: r(1575, 3150, 'kcal/day'),
+        Fluid: r(1575, 3150, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Women 15 to <19 yr',
+      nutrients: {
+        Protein: r(20, 23, 'g/day'),
+        Energy: r(1260, 3150, 'kcal/day'),
+        Fluid: r(1260, 3150, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Women >=19 yr',
+      nutrients: {
+        Protein: r(22, 25, 'g/day'),
+        Energy: r(1785, 2625, 'kcal/day'),
+        Fluid: r(1785, 2625, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Men 11 to <15 yr',
+      nutrients: {
+        Protein: r(20, 23, 'g/day'),
+        Energy: r(2100, 3885, 'kcal/day'),
+        Fluid: r(2100, 3885, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Men 15 to <19 yr',
+      nutrients: {
+        Protein: r(21, 24, 'g/day'),
+        Energy: r(2200, 4095, 'kcal/day'),
+        Fluid: r(2200, 4095, 'mL/day'),
+      },
+    },
+    {
+      ageLabel: 'Men >=19 yr',
+      nutrients: {
+        Protein: r(23, 32, 'g/day'),
+        Energy: r(2625, 3465, 'kcal/day'),
+        Fluid: r(2625, 3465, 'mL/day'),
+      },
+    },
+  ],
 };
 
-export const DEFAULT_FORMULAS: Record<string, FormulaStats> = {
-  PKU_STD: { id: 'std', name: 'Standard Formula', kcal: 510, protein: 10.8, limiter: 430 },
-  PKU_SPEC: { id: 'spec', name: 'PHE-free Formula', kcal: 473, protein: 13.5, limiter: 0 },
-  MMA_STD: { id: 'std', name: 'Standard S-26', kcal: 526, protein: 10.83, limiter: 273 },
-  MMA_SPEC: { id: 'spec', name: 'MMA/PA Special', kcal: 506, protein: 11.8, limiter: 0 },
-  MSUD_STD: { id: 'std', name: 'Standard S-26', kcal: 526, protein: 10.8, limiter: 1079 },
-  MSUD_SPEC: { id: 'spec', name: 'BCAA-free Formula', kcal: 466, protein: 13.0, limiter: 0 },
-  GA_STD: { id: 'std', name: 'Standard S-26', kcal: 526, protein: 10.83, limiter: 895 },
-  GA_SPEC: { id: 'spec', name: 'LYS/TRY-free Formula', kcal: 466, protein: 13.1, limiter: 0 },
-  UCD_STD: { id: 'std', name: 'Standard (UCD)', kcal: 540, protein: 11, limiter: 0 },
-  UCD_SPEC: { id: 'spec', name: 'Special EAA (UCD)', kcal: 492, protein: 7.5, limiter: 0 },
-  MODULAR: { id: 'mod', name: 'Protein-free (Modular)', kcal: 492, protein: 0, limiter: 0 }
+const SIMILAC_READY_TO_FEED_100ML: FormulaReference = {
+  name: 'Similac With Iron Infant Formula (Ready to Feed)',
+  basis: '100mL',
+  values: {
+    Protein: 1.4,
+    Energy: 68,
+    PHE: 59,
+    TYR: 58,
+    ILE: 75,
+    LEU: 144,
+    VAL: 83,
+    MET: 35,
+    CYS: 19,
+  },
 };
 
-// محفوظ للاستخدام الداخلي فقط (بدون عرض مباشر في الواجهة)
-export const STANDARD_FORMULA_GUIDELINES: Record<DiseaseType, FormulaStats> = {
-  [DiseaseType.PKU]: DEFAULT_FORMULAS.PKU_STD,
-  [DiseaseType.MMA_PA]: DEFAULT_FORMULAS.MMA_STD,
-  [DiseaseType.MSUD]: DEFAULT_FORMULAS.MSUD_STD,
-  [DiseaseType.GA]: DEFAULT_FORMULAS.GA_STD,
-  [DiseaseType.UCD]: DEFAULT_FORMULAS.UCD_STD,
+export const STANDARD_FORMULA_BY_DISEASE: Record<DiseaseType, FormulaReference | null> = {
+  [DiseaseType.PKU]: SIMILAC_READY_TO_FEED_100ML,
+  [DiseaseType.TYR_I_IA_IB]: SIMILAC_READY_TO_FEED_100ML,
+  [DiseaseType.TYR_II_III]: SIMILAC_READY_TO_FEED_100ML,
+  [DiseaseType.MSUD]: SIMILAC_READY_TO_FEED_100ML,
+  [DiseaseType.LEU_CATABOLISM]: SIMILAC_READY_TO_FEED_100ML,
+  [DiseaseType.BETA_KETOTHIOLASE]: SIMILAC_READY_TO_FEED_100ML,
+  [DiseaseType.HOMOCYSTINURIA]: SIMILAC_READY_TO_FEED_100ML,
+  [DiseaseType.GA_TYPE_I]: SIMILAC_READY_TO_FEED_100ML,
+  [DiseaseType.GA_TYPE_II]: SIMILAC_READY_TO_FEED_100ML,
+  [DiseaseType.LPI]: SIMILAC_READY_TO_FEED_100ML,
+  [DiseaseType.MMA_PA]: SIMILAC_READY_TO_FEED_100ML,
+  [DiseaseType.GALACTOSEMIA]: SIMILAC_READY_TO_FEED_100ML,
+  [DiseaseType.UCD]: SIMILAC_READY_TO_FEED_100ML,
 };
 
-export const REFERENCE_TEXT = 'Metabolic Nutrition Guidelines 2024 (PKU, MMA/PA, MSUD, GA, UCD)';
+export const REFERENCE_TEXT =
+  'Source locked to user-provided Ross Products Division (2001) tables only. The final case-study image is used as output style example only.';
+
+export const FORMULA_OPTIONS: FormulaOption[] = [
+  {
+    id: 'STANDARD_CASE_100G',
+    role: 'standard',
+    name: 'Standard Formula (Case, 100g)',
+    basis: '100g',
+    values: { Energy: 510, Protein: 10.8, PHE: 430, TYR: 500 },
+    diseases: [DiseaseType.PKU, DiseaseType.TYR_I_IA_IB, DiseaseType.TYR_II_III],
+  },
+  {
+    id: 'SIMILAC_RTF_100ML',
+    role: 'standard',
+    name: 'Similac With Iron (Ready-to-Feed, 100mL)',
+    basis: '100mL',
+    values: {
+      Energy: 68,
+      Protein: 1.4,
+      PHE: 59,
+      TYR: 58,
+      ILE: 75,
+      LEU: 144,
+      VAL: 83,
+      MET: 35,
+      CYS: 19,
+    },
+  },
+  {
+    id: 'ISOMIL_RTF_100ML',
+    role: 'standard',
+    name: 'Isomil Soy Formula (Ready-to-Feed, 100mL)',
+    basis: '100mL',
+    values: {
+      Energy: 68,
+      Protein: 1.66,
+      PHE: 88,
+      TYR: 60,
+      ILE: 74,
+      LEU: 135,
+      VAL: 76,
+      MET: 42,
+      CYS: 18,
+    },
+  },
+  {
+    id: 'ALIMENTUM_RTF_100ML',
+    role: 'standard',
+    name: 'Alimentum Protein Hydrolysate (Ready-to-Feed, 100mL)',
+    basis: '100mL',
+    values: {
+      Energy: 68,
+      Protein: 1.86,
+      PHE: 86,
+      TYR: 29,
+      ILE: 108,
+      LEU: 173,
+      VAL: 140,
+      MET: 54,
+      CYS: 32,
+    },
+  },
+  {
+    id: 'WHOLE_MILK_100ML',
+    role: 'standard',
+    name: 'Whole Cow Milk (100mL)',
+    basis: '100mL',
+    values: {
+      Energy: 63,
+      Protein: 3.39,
+      PHE: 164,
+      TYR: 164,
+      ILE: 205,
+      LEU: 332,
+      VAL: 227,
+      MET: 86,
+      CYS: 31,
+    },
+  },
+  {
+    id: 'HUMAN_MILK_100ML',
+    role: 'standard',
+    name: 'Human Milk (100mL)',
+    basis: '100mL',
+    values: { Energy: 72, Protein: 1.05, PHE: 48, TYR: 55, MET: 22, CYS: 20 },
+    diseases: [DiseaseType.PKU, DiseaseType.HOMOCYSTINURIA],
+  },
+  {
+    id: 'PHE_FREE_CASE_100G',
+    role: 'special',
+    name: 'PHE-free Formula (Case, 100g)',
+    basis: '100g',
+    values: { Energy: 473, Protein: 13.5, PHE: 0, TYR: 1440 },
+    diseases: [DiseaseType.PKU],
+  },
+  {
+    id: 'TYREX1_100G',
+    role: 'special',
+    name: 'Tyrex-1 (100g)',
+    basis: '100g',
+    values: { Energy: 480, Protein: 15, PHE: 0, TYR: 0 },
+    diseases: [DiseaseType.TYR_I_IA_IB, DiseaseType.TYR_II_III],
+  },
+  {
+    id: 'TYREX2_100G',
+    role: 'special',
+    name: 'Tyrex-2 (100g)',
+    basis: '100g',
+    values: { Energy: 410, Protein: 30, PHE: 0, TYR: 0 },
+    diseases: [DiseaseType.TYR_I_IA_IB, DiseaseType.TYR_II_III],
+  },
+  {
+    id: 'KETONEX1_100G',
+    role: 'special',
+    name: 'Ketonex-1 (100g)',
+    basis: '100g',
+    values: { Energy: 480, Protein: 15, ILE: 0, LEU: 0, VAL: 0 },
+    diseases: [DiseaseType.MSUD, DiseaseType.BETA_KETOTHIOLASE, DiseaseType.LEU_CATABOLISM],
+  },
+  {
+    id: 'KETONEX2_100G',
+    role: 'special',
+    name: 'Ketonex-2 (100g)',
+    basis: '100g',
+    values: { Energy: 410, Protein: 30, ILE: 0, LEU: 0, VAL: 0 },
+    diseases: [DiseaseType.MSUD, DiseaseType.BETA_KETOTHIOLASE, DiseaseType.LEU_CATABOLISM],
+  },
+  {
+    id: 'HOMINEX1_100G',
+    role: 'special',
+    name: 'Hominex-1 (100g)',
+    basis: '100g',
+    values: { Energy: 480, Protein: 15, MET: 0, CYS: 450 },
+    diseases: [DiseaseType.HOMOCYSTINURIA],
+  },
+  {
+    id: 'HOMINEX2_100G',
+    role: 'special',
+    name: 'Hominex-2 (100g)',
+    basis: '100g',
+    values: { Energy: 410, Protein: 30, MET: 0, CYS: 900 },
+    diseases: [DiseaseType.HOMOCYSTINURIA],
+  },
+  {
+    id: 'CYCLINEX1_100G',
+    role: 'special',
+    name: 'Cyclinex-1 (100g)',
+    basis: '100g',
+    values: { Energy: 510, Protein: 7.5 },
+    diseases: [DiseaseType.UCD],
+  },
+  {
+    id: 'CYCLINEX2_100G',
+    role: 'special',
+    name: 'Cyclinex-2 (100g)',
+    basis: '100g',
+    values: { Energy: 440, Protein: 15 },
+    diseases: [DiseaseType.UCD],
+  },
+  {
+    id: 'PRO_PHREE_100G',
+    role: 'modular',
+    name: 'Pro-Phree (100g)',
+    basis: '100g',
+    values: { Energy: 510, Protein: 0 },
+    diseases: [DiseaseType.LPI, DiseaseType.UCD],
+  },
+  {
+    id: 'DUOCAL_100G',
+    role: 'modular',
+    name: 'Protein-free Formula (Duocal, 100g)',
+    basis: '100g',
+    values: { Energy: 492, Protein: 0 },
+  },
+];
+
+export const FORMULA_OPTION_BY_ID: Record<string, FormulaOption> = FORMULA_OPTIONS.reduce(
+  (acc, item) => ({ ...acc, [item.id]: item }),
+  {} as Record<string, FormulaOption>,
+);
+
+export const DEFAULT_FORMULA_SELECTION: Record<
+  DiseaseType,
+  { standard: string; special?: string; modular?: string }
+> = {
+  [DiseaseType.PKU]: { standard: 'STANDARD_CASE_100G', special: 'PHE_FREE_CASE_100G', modular: 'DUOCAL_100G' },
+  [DiseaseType.TYR_I_IA_IB]: { standard: 'STANDARD_CASE_100G', special: 'TYREX1_100G', modular: 'DUOCAL_100G' },
+  [DiseaseType.TYR_II_III]: { standard: 'STANDARD_CASE_100G', special: 'TYREX1_100G', modular: 'DUOCAL_100G' },
+  [DiseaseType.MSUD]: { standard: 'SIMILAC_RTF_100ML', special: 'KETONEX1_100G', modular: 'PRO_PHREE_100G' },
+  [DiseaseType.LEU_CATABOLISM]: { standard: 'SIMILAC_RTF_100ML', special: 'KETONEX1_100G', modular: 'PRO_PHREE_100G' },
+  [DiseaseType.BETA_KETOTHIOLASE]: { standard: 'SIMILAC_RTF_100ML', special: 'KETONEX1_100G', modular: 'PRO_PHREE_100G' },
+  [DiseaseType.HOMOCYSTINURIA]: { standard: 'SIMILAC_RTF_100ML', special: 'HOMINEX1_100G', modular: 'PRO_PHREE_100G' },
+  [DiseaseType.GA_TYPE_I]: { standard: 'SIMILAC_RTF_100ML', modular: 'PRO_PHREE_100G' },
+  [DiseaseType.GA_TYPE_II]: { standard: 'SIMILAC_RTF_100ML', modular: 'PRO_PHREE_100G' },
+  [DiseaseType.LPI]: { standard: 'SIMILAC_RTF_100ML', modular: 'PRO_PHREE_100G' },
+  [DiseaseType.MMA_PA]: { standard: 'SIMILAC_RTF_100ML', modular: 'PRO_PHREE_100G' },
+  [DiseaseType.GALACTOSEMIA]: { standard: 'SIMILAC_RTF_100ML', modular: 'PRO_PHREE_100G' },
+  [DiseaseType.UCD]: { standard: 'SIMILAC_RTF_100ML', special: 'CYCLINEX1_100G', modular: 'PRO_PHREE_100G' },
+};
+
+export const DISEASE_ANALYSIS_CONTEXT: Record<DiseaseType, 'AA' | 'PROTEIN'> = {
+  [DiseaseType.PKU]: 'AA',
+  [DiseaseType.TYR_I_IA_IB]: 'AA',
+  [DiseaseType.TYR_II_III]: 'AA',
+  [DiseaseType.MSUD]: 'AA',
+  [DiseaseType.LEU_CATABOLISM]: 'AA',
+  [DiseaseType.BETA_KETOTHIOLASE]: 'AA',
+  [DiseaseType.HOMOCYSTINURIA]: 'AA',
+  [DiseaseType.GA_TYPE_I]: 'AA',
+  [DiseaseType.GA_TYPE_II]: 'PROTEIN',
+  [DiseaseType.LPI]: 'PROTEIN',
+  [DiseaseType.MMA_PA]: 'AA',
+  [DiseaseType.GALACTOSEMIA]: 'PROTEIN',
+  [DiseaseType.UCD]: 'PROTEIN',
+};
+
+export const DISEASE_ANALYSIS_NUTRIENTS: Record<DiseaseType, string[]> = {
+  [DiseaseType.PKU]: ['PHE', 'TYR'],
+  [DiseaseType.TYR_I_IA_IB]: ['PHE+TYR'],
+  [DiseaseType.TYR_II_III]: ['PHE', 'TYR'],
+  [DiseaseType.MSUD]: ['LEU', 'ILE', 'VAL'],
+  [DiseaseType.LEU_CATABOLISM]: ['LEU'],
+  [DiseaseType.BETA_KETOTHIOLASE]: ['LEU', 'ILE', 'VAL'],
+  [DiseaseType.HOMOCYSTINURIA]: ['MET', 'CYS'],
+  [DiseaseType.GA_TYPE_I]: ['LYS', 'TRP'],
+  [DiseaseType.GA_TYPE_II]: ['Protein', 'Fat'],
+  [DiseaseType.LPI]: ['Protein'],
+  [DiseaseType.MMA_PA]: ['ILE', 'MET', 'THR', 'VAL'],
+  [DiseaseType.GALACTOSEMIA]: ['Protein'],
+  [DiseaseType.UCD]: ['Protein'],
+};
