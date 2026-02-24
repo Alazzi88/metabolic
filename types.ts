@@ -16,6 +16,7 @@ export enum DiseaseType {
 
 export type TargetMode = 'MIN' | 'MID' | 'MAX';
 export type FormulaRole = 'standard' | 'special' | 'modular';
+export type FormulaAgeGroup = 'INFANT' | 'CHILD';
 
 export type NutrientUnit =
   | 'mg/kg'
@@ -57,6 +58,7 @@ export interface FormulaOption extends FormulaReference {
   id: string;
   role: FormulaRole;
   diseases?: DiseaseType[];
+  ageGroup?: FormulaAgeGroup;
   note?: string;
 }
 
@@ -72,7 +74,6 @@ export interface CalculationInputs {
   ageGroupIndex: number;
   targetMode: TargetMode;
   feedsPerDay: number;
-  analysisValues?: Record<string, number | undefined>;
   scoopSizeG: number;
   waterPerScoopMl: number;
   formulas: FormulaSelection;
@@ -103,10 +104,23 @@ export interface FormulaContribution {
   perFeedWaterMl?: number;
 }
 
+export interface NutrientBalance {
+  nutrient: string;
+  unit: 'mg/day' | 'g/day' | 'kcal/day' | 'mL/day' | '%energy';
+  min: number;
+  max: number;
+  target: number;
+  delivered: number;
+  deficitToTarget: number;
+  excessToTarget: number;
+  status: 'LOW' | 'NORMAL' | 'HIGH';
+}
+
 export interface FormulaPlan {
   primaryLimiter?: string;
   notes: string[];
   items: FormulaContribution[];
+  nutrientBalances: NutrientBalance[];
   totals: {
     kcal: number;
     protein: number;
@@ -125,19 +139,6 @@ export interface FormulaPlan {
   };
 }
 
-export interface AnalysisRecommendation {
-  overallStatus: 'LOW' | 'NORMAL' | 'HIGH' | 'NA';
-  items: Array<{
-    nutrient: string;
-    expectedMin?: number;
-    expectedMax?: number;
-    unit?: string;
-    inputValue?: number;
-    status: 'LOW' | 'NORMAL' | 'HIGH' | 'NA';
-    message: string;
-  }>;
-}
-
 export interface CalculationOutputs {
   rows: CalculatedRequirement[];
   highlights: {
@@ -147,5 +148,4 @@ export interface CalculationOutputs {
     primaryLimit?: { nutrient: string; value: number; unit: string };
   };
   formulaPlan: FormulaPlan;
-  analysis: AnalysisRecommendation;
 }

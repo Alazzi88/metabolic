@@ -3,18 +3,25 @@ import {
   CalculationOutputs,
   FormulaContribution,
   FormulaReference,
+  NutrientBalance,
   NutrientRange,
   NutrientUnit,
   TargetMode,
 } from './types';
-import {
-  DISEASE_ANALYSIS_CONTEXT,
-  DISEASE_ANALYSIS_NUTRIENTS,
-  DISEASE_METADATA,
-  GUIDELINES,
-} from './constants';
+import { DISEASE_METADATA, GUIDELINES } from './constants';
 
 type DailyUnit = 'mg/day' | 'g/day' | 'kcal/day' | 'mL/day' | '%energy';
+type CompletionNutrient = 'Protein' | 'Energy' | 'Carbohydrate' | 'Fat';
+const EPSILON = 1e-6;
+const NON_AMINO_NUTRIENTS = new Set([
+  'Energy',
+  'Protein',
+  'Fluid',
+  'Fat',
+  'Carbohydrate',
+  'LinoleicAcid',
+  'LinolenicAcid',
+]);
 
 function toDailyUnit(unit: NutrientUnit): DailyUnit {
   if (unit === 'mg/kg' || unit === 'mg/day') return 'mg/day';
@@ -78,6 +85,93 @@ function formulaNutrient(formula: FormulaReference, nutrient: string): number | 
   return resolveCompositeValue(nutrient, formula.values);
 }
 
+function isAminoAcidNutrient(nutrient: string): boolean {
+  if (NON_AMINO_NUTRIENTS.has(nutrient)) return false;
+
+  if (!nutrient.includes('+')) return true;
+
+  return nutrient
+    .split('+')
+    .map((part) => part.trim())
+    .every((part) => part.length > 0 && !NON_AMINO_NUTRIENTS.has(part));
+}
+
+function deliveredForCompletionNutrient(
+  nutrient: CompletionNutrient,
+  planItems: FormulaContribution[],
+  formulaByRole: Partial<Record<FormulaContribution['role'], FormulaReference>>,
+): number {
+  if (nutrient === 'Energy') {
+    return planItems.reduce((sum, item) => sum + item.kcal, 0);
+  }
+
+  if (nutrient === 'Protein') {
+    return planItems.reduce((sum, item) => sum + item.protein, 0);
+  }
+
+  return planItems.reduce((sum, item) => {
+    const formula = formulaByRole[item.role];
+    if (!formula) return sum;
+
+    const nutrientPer100 = formulaNutrient(formula, nutrient);
+    if (typeof nutrientPer100 !== 'number') return sum;
+    return sum + (nutrientPer100 * item.amount) / 100;
+  }, 0);
+}
+
+function requiredAmountForFormulaCompletion(params: {
+  formula: FormulaReference;
+  formulaLabel: string;
+  completionTargets: Array<{ nutrient: CompletionNutrient; target?: number; label: string }>;
+  planItems: FormulaContribution[];
+  formulaByRole: Partial<Record<FormulaContribution['role'], FormulaReference>>;
+  planNotes: string[];
+}): number {
+  const {
+    formula,
+    formulaLabel,
+    completionTargets,
+    planItems,
+    formulaByRole,
+    planNotes,
+  } = params;
+
+  let requiredAmount = 0;
+
+  completionTargets.forEach(({ nutrient, target, label }) => {
+    if (typeof target !== 'number') return;
+
+    const delivered = deliveredForCompletionNutrient(nutrient, planItems, formulaByRole);
+    const deficit = Math.max(0, target - delivered);
+    if (deficit <= EPSILON) return;
+
+    const nutrientPer100 = formulaNutrient(formula, nutrient);
+    if (typeof nutrientPer100 === 'number' && nutrientPer100 > EPSILON) {
+      const needed = (deficit * 100) / nutrientPer100;
+      if (needed > requiredAmount) requiredAmount = needed;
+      return;
+    }
+
+    planNotes.push(`${formulaLabel} has zero ${label}, so ${label} deficit remains.`);
+  });
+
+  return requiredAmount;
+}
+
+function hasRemainingCompletionDeficit(params: {
+  completionTargets: Array<{ nutrient: CompletionNutrient; target?: number }>;
+  planItems: FormulaContribution[];
+  formulaByRole: Partial<Record<FormulaContribution['role'], FormulaReference>>;
+}): boolean {
+  const { completionTargets, planItems, formulaByRole } = params;
+
+  return completionTargets.some(({ nutrient, target }) => {
+    if (typeof target !== 'number') return false;
+    const delivered = deliveredForCompletionNutrient(nutrient, planItems, formulaByRole);
+    return target - delivered > EPSILON;
+  });
+}
+
 function makeContribution(params: {
   role: FormulaContribution['role'];
   formula: FormulaReference;
@@ -138,38 +232,6 @@ function makeContribution(params: {
   };
 }
 
-function analysisMessage(
-  diseaseContext: 'AA' | 'PROTEIN',
-  nutrient: string,
-  status: 'LOW' | 'NORMAL' | 'HIGH' | 'NA',
-): string {
-  if (status === 'NA') {
-    return `No analysis input entered for ${nutrient}.`;
-  }
-
-  if (diseaseContext === 'AA') {
-    if (status === 'LOW') {
-      return `${nutrient} is below the expected range from selected guideline. Usually no extra restriction is needed now; continue follow-up.`;
-    }
-
-    if (status === 'HIGH') {
-      return `${nutrient} is above the expected range from selected guideline. Usually tighten restriction and avoid increasing intact standard load.`;
-    }
-
-    return `${nutrient} is within expected range. Keep current strategy and routine follow-up.`;
-  }
-
-  if (status === 'LOW') {
-    return `${nutrient} is below expected range. Usually no need for further protein restriction now.`;
-  }
-
-  if (status === 'HIGH') {
-    return `${nutrient} is above expected range. Consider reducing intact protein exposure and supporting energy by modular/non-protein calories.`;
-  }
-
-  return `${nutrient} is within expected range. Keep current strategy and routine follow-up.`;
-}
-
 export function calculateDiet(inputs: CalculationInputs): CalculationOutputs {
   const safeWeight = Math.max(0, inputs.weightKg || 0);
   const safeFeeds = Math.max(1, Math.floor(inputs.feedsPerDay || 1));
@@ -216,6 +278,8 @@ export function calculateDiet(inputs: CalculationInputs): CalculationOutputs {
   const targetEnergy = targetByNutrient.Energy;
   const targetProtein = targetByNutrient.Protein;
   const targetFluid = targetByNutrient.Fluid;
+  const targetCarbohydrate = targetByNutrient.Carbohydrate;
+  const targetFat = targetByNutrient.Fat;
 
   const planNotes: string[] = [];
   const planItems: FormulaContribution[] = [];
@@ -223,26 +287,50 @@ export function calculateDiet(inputs: CalculationInputs): CalculationOutputs {
   const standardFormula = inputs.formulas.standard;
   const specialFormula = inputs.formulas.special || null;
   const modularFormula = inputs.formulas.modular || null;
+  const formulaByRole: Partial<Record<FormulaContribution['role'], FormulaReference>> = {
+    standard: standardFormula,
+    special: specialFormula || undefined,
+    modular: modularFormula || undefined,
+  };
+
+  const completionTargets: Array<{
+    nutrient: CompletionNutrient;
+    target?: number;
+    label: string;
+  }> = [
+    { nutrient: 'Protein', target: targetProtein, label: 'protein' },
+    { nutrient: 'Energy', target: targetEnergy, label: 'calories' },
+    { nutrient: 'Carbohydrate', target: targetCarbohydrate, label: 'carbohydrate' },
+    { nutrient: 'Fat', target: targetFat, label: 'fat' },
+  ];
 
   let standardAmount = 0;
+  let limitingNutrientForStandard: string | null = null;
+  let maxStandardFromElements = Number.POSITIVE_INFINITY;
 
-  const standardLimiterPer100 =
-    primaryLimiter && primaryLimiter.length > 0
-      ? formulaNutrient(standardFormula, primaryLimiter)
-      : undefined;
+  rows.forEach((row) => {
+    if (!isAminoAcidNutrient(row.nutrient) || row.source.minOnly) return;
 
-  if (
-    typeof primaryLimitValue === 'number' &&
-    typeof standardLimiterPer100 === 'number' &&
-    standardLimiterPer100 > 0
-  ) {
-    standardAmount = (primaryLimitValue * 100) / standardLimiterPer100;
-  } else if (typeof targetProtein === 'number' && (standardFormula.values.Protein || 0) > 0) {
-    standardAmount = (targetProtein * 100) / (standardFormula.values.Protein || 1);
-    planNotes.push('Primary limiter not available in standard formula values. Standard amount set by protein target.');
+    const standardElementPer100 = formulaNutrient(standardFormula, row.nutrient);
+    if (typeof standardElementPer100 !== 'number' || standardElementPer100 <= EPSILON) return;
+
+    const maxAmountForThisElement = (row.totalMax * 100) / standardElementPer100;
+    if (maxAmountForThisElement < maxStandardFromElements) {
+      maxStandardFromElements = maxAmountForThisElement;
+      limitingNutrientForStandard = row.nutrient;
+    }
+  });
+
+  if (Number.isFinite(maxStandardFromElements)) {
+    standardAmount = Math.max(0, maxStandardFromElements);
   } else {
-    standardAmount = 0;
-    planNotes.push('Unable to calculate standard amount from limiter/protein.');
+    const standardProteinPer100 = standardFormula.values.Protein || 0;
+    if ((targetProtein || 0) > 0 && standardProteinPer100 > 0) {
+      standardAmount = ((targetProtein || 0) * 100) / standardProteinPer100;
+      planNotes.push('No elemental upper limit found, so standard amount is set by protein target.');
+    } else if ((targetProtein || 0) > 0) {
+      planNotes.push('Standard formula has zero protein, so protein deficit remains.');
+    }
   }
 
   const standardItem = makeContribution({
@@ -256,15 +344,28 @@ export function calculateDiet(inputs: CalculationInputs): CalculationOutputs {
   });
   planItems.push(standardItem);
 
-  const proteinAfterStandard = Math.max(0, (targetProtein || 0) - standardItem.protein);
+  if (limitingNutrientForStandard) {
+    if (specialFormula) {
+      planNotes.push(
+        `${limitingNutrientForStandard} reached its highest allowed level from standard formula. Special formula will complete remaining needs.`,
+      );
+    } else {
+      planNotes.push(
+        `${limitingNutrientForStandard} reached its highest allowed level from standard formula, but no special formula is selected.`,
+      );
+    }
+  }
 
   let specialAmount = 0;
   if (specialFormula) {
-    if ((specialFormula.values.Protein || 0) > 0) {
-      specialAmount = (proteinAfterStandard * 100) / (specialFormula.values.Protein || 1);
-    } else if (proteinAfterStandard > 0) {
-      planNotes.push('Special formula has zero protein, so protein deficit remains.');
-    }
+    specialAmount = requiredAmountForFormulaCompletion({
+      formula: specialFormula,
+      formulaLabel: 'Special formula',
+      completionTargets,
+      planItems,
+      formulaByRole,
+      planNotes,
+    });
 
     const specialItem = makeContribution({
       role: 'special',
@@ -276,22 +377,26 @@ export function calculateDiet(inputs: CalculationInputs): CalculationOutputs {
       primaryLimiter,
     });
     planItems.push(specialItem);
-  } else {
-    if (proteinAfterStandard > 0) {
-      planNotes.push('No special formula selected while protein deficit exists.');
-    }
+  } else if (
+    hasRemainingCompletionDeficit({
+      completionTargets,
+      planItems,
+      formulaByRole,
+    })
+  ) {
+    planNotes.push('No special formula selected. Remaining deficits will be handled by modular.');
   }
-
-  const kcalBeforeModular = planItems.reduce((sum, item) => sum + item.kcal, 0);
-  const energyDeficit = Math.max(0, (targetEnergy || 0) - kcalBeforeModular);
 
   let modularAmount = 0;
   if (modularFormula) {
-    if ((modularFormula.values.Energy || 0) > 0) {
-      modularAmount = (energyDeficit * 100) / (modularFormula.values.Energy || 1);
-    } else if (energyDeficit > 0) {
-      planNotes.push('Modular formula has zero calories, so energy deficit remains.');
-    }
+    modularAmount = requiredAmountForFormulaCompletion({
+      formula: modularFormula,
+      formulaLabel: 'Modular formula',
+      completionTargets,
+      planItems,
+      formulaByRole,
+      planNotes,
+    });
 
     const modularItem = makeContribution({
       role: 'modular',
@@ -303,8 +408,14 @@ export function calculateDiet(inputs: CalculationInputs): CalculationOutputs {
       primaryLimiter,
     });
     planItems.push(modularItem);
-  } else if (energyDeficit > 0) {
-    planNotes.push('No modular formula selected while energy deficit exists.');
+  } else if (
+    hasRemainingCompletionDeficit({
+      completionTargets,
+      planItems,
+      formulaByRole,
+    })
+  ) {
+    planNotes.push('No modular formula selected while deficits exist.');
   }
 
   const totalKcal = planItems.reduce((sum, item) => sum + item.kcal, 0);
@@ -329,66 +440,47 @@ export function calculateDiet(inputs: CalculationInputs): CalculationOutputs {
 
   const finalVolumeMl = totalReadyToFeedMl + totalWaterMl;
 
-  const analysisContext = DISEASE_ANALYSIS_CONTEXT[inputs.disease];
-  const analysisTargets = DISEASE_ANALYSIS_NUTRIENTS[inputs.disease] || [];
-  const analysisValues = inputs.analysisValues || {};
+  const nutrientBalances: NutrientBalance[] = rows.map((row) => {
+    const delivered =
+      row.nutrient === 'Energy'
+        ? totalKcal
+        : row.nutrient === 'Protein'
+          ? totalProtein
+          : row.nutrient === 'Fluid'
+            ? finalVolumeMl
+            : planItems.reduce((sum, item) => {
+                const formula = formulaByRole[item.role];
+                if (!formula) return sum;
 
-  const rowsByNutrient = rows.reduce<Record<string, (typeof rows)[number]>>((acc, row) => {
-    acc[row.nutrient] = row;
-    return acc;
-  }, {});
+                const nutrientPer100 = formulaNutrient(formula, row.nutrient);
+                if (typeof nutrientPer100 !== 'number') return sum;
+                return sum + (nutrientPer100 * item.amount) / 100;
+              }, 0);
 
-  const analysisItems = analysisTargets.map((nutrient) => {
-    const row = rowsByNutrient[nutrient];
-    const expectedMin = row?.totalMin;
-    const expectedMax = row?.totalMax;
-    const unit = row?.totalUnit;
-    const rawInput = analysisValues[nutrient];
-    const inputValue =
-      typeof rawInput === 'number' && Number.isFinite(rawInput) ? rawInput : undefined;
+    const deficitToTarget = Math.max(0, row.totalTarget - delivered);
+    const excessToTarget = Math.max(0, delivered - row.totalTarget);
 
-    let status: 'LOW' | 'NORMAL' | 'HIGH' | 'NA' = 'NA';
-
-    if (
-      typeof inputValue === 'number' &&
-      typeof expectedMin === 'number' &&
-      typeof expectedMax === 'number'
-    ) {
-      if (inputValue < expectedMin) {
-        status = 'LOW';
-      } else if (inputValue > expectedMax) {
-        status = 'HIGH';
-      } else {
-        status = 'NORMAL';
-      }
-    } else if (typeof inputValue === 'number') {
-      status = 'NA';
+    let status: NutrientBalance['status'] = 'NORMAL';
+    if (row.source.minOnly) {
+      status = delivered < row.totalMin - EPSILON ? 'LOW' : 'NORMAL';
+    } else if (delivered < row.totalMin - EPSILON) {
+      status = 'LOW';
+    } else if (delivered > row.totalMax + EPSILON) {
+      status = 'HIGH';
     }
 
     return {
-      nutrient,
-      expectedMin,
-      expectedMax,
-      unit,
-      inputValue,
+      nutrient: row.nutrient,
+      unit: row.totalUnit,
+      min: row.totalMin,
+      max: row.totalMax,
+      target: row.totalTarget,
+      delivered,
+      deficitToTarget,
+      excessToTarget,
       status,
-      message: analysisMessage(analysisContext, nutrient, status),
     };
   });
-
-  const overallStatus: 'LOW' | 'NORMAL' | 'HIGH' | 'NA' =
-    analysisItems.length === 0 || analysisItems.every((item) => item.status === 'NA')
-      ? 'NA'
-      : analysisItems.some((item) => item.status === 'HIGH')
-        ? 'HIGH'
-        : analysisItems.some((item) => item.status === 'LOW')
-          ? 'LOW'
-          : 'NORMAL';
-
-  const analysis = {
-    overallStatus,
-    items: analysisItems,
-  };
 
   return {
     rows,
@@ -409,6 +501,7 @@ export function calculateDiet(inputs: CalculationInputs): CalculationOutputs {
       primaryLimiter,
       notes: planNotes,
       items: planItems,
+      nutrientBalances,
       totals: {
         kcal: totalKcal,
         protein: totalProtein,
@@ -427,6 +520,5 @@ export function calculateDiet(inputs: CalculationInputs): CalculationOutputs {
         energy: Math.max(0, (targetEnergy || 0) - totalKcal),
       },
     },
-    analysis,
   };
 }

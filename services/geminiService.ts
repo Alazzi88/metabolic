@@ -11,25 +11,25 @@ export const generatePreparationGuide = async (
   // Initialize AI client inside the function to ensure the latest API key from the environment is used.
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const prompt = `
-    بصفتك خبير تغذية علاجية للأمراض الاستقلابية، قم بكتابة طريقة تحضير مفصلة باللغة العربية بناءً على المعطيات التالية:
-    المرض: ${patient.disease}
-    الوزن: ${patient.weightKg} كجم
-    
-    المكونات المحسوبة:
-    1. ${formulaNames.standard}: ${result.recipe.standardG.toFixed(1)} جرام
-    2. ${formulaNames.special}: ${result.recipe.specialG.toFixed(1)} جرام
-    3. ${formulaNames.modular}: ${result.recipe.modularG.toFixed(1)} جرام
-    4. كمية الماء المطلوبة: ${result.recipe.totalVolume.toFixed(0)} مل
-    
-    المخرجات الغذائية:
-    - إجمالي السعرات: ${result.actuals.kcal.toFixed(0)} كيلو كالوري
-    - إجمالي البروتين: ${result.actuals.protein.toFixed(1)} جرام
-    
-    المطلوب:
-    1. خطوات التحضير الدقيقة (التعقيم، درجة حرارة الماء، الخلط).
-    2. نصائح للأم حول كيفية المراقبة.
-    3. تنبيه طبي مهم.
-    اجعل الأسلوب مهني وواضح جداً للأمهات.
+    You are a metabolic clinical nutrition expert. Write a detailed preparation guide in English based on:
+    Disease: ${patient.disease}
+    Weight: ${patient.weightKg} kg
+
+    Calculated ingredients:
+    1. ${formulaNames.standard}: ${result.recipe.standardG.toFixed(1)} g
+    2. ${formulaNames.special}: ${result.recipe.specialG.toFixed(1)} g
+    3. ${formulaNames.modular}: ${result.recipe.modularG.toFixed(1)} g
+    4. Required water volume: ${result.recipe.totalVolume.toFixed(0)} mL
+
+    Nutrition output:
+    - Total calories: ${result.actuals.kcal.toFixed(0)} kcal
+    - Total protein: ${result.actuals.protein.toFixed(1)} g
+
+    Required:
+    1. Precise preparation steps (sterilization, water temperature, mixing order).
+    2. Caregiver monitoring tips.
+    3. One important medical caution.
+    Keep the style professional and very clear for caregivers.
   `;
 
   try {
@@ -41,6 +41,6 @@ export const generatePreparationGuide = async (
     return response.text;
   } catch (error) {
     console.error("Gemini API Error:", error);
-    return "عذراً، حدث خطأ أثناء توليد دليل التحضير. يرجى مراجعة الحسابات يدوياً.";
+    return "Sorry, an error occurred while generating the preparation guide. Please review calculations manually.";
   }
 };

@@ -1,5 +1,5 @@
 {
   "name": "Metabolic Formula Pro",
-  "description": "نظام متقدم لحساب وإعداد تركيبات الحليب للأمراض الاستقلابية (Metabolic Diseases)، يحسب السعرات، البروتين، والاحتياجات بناءً على الوزن والعمر مع دعم للمدعمات (Modulars).",
+  "description": "Advanced system for calculating and preparing milk formulas for metabolic diseases, including calories, protein, and daily requirements based on weight and age, with modular support.",
   "requestFramePermissions": []
 }
