@@ -13,6 +13,7 @@ import { DISEASE_METADATA, GUIDELINES } from './constants';
 type DailyUnit = 'mg/day' | 'g/day' | 'kcal/day' | 'mL/day' | '%energy';
 type CompletionNutrient = 'Protein' | 'Energy' | 'Carbohydrate' | 'Fat';
 const EPSILON = 1e-6;
+const STANDARD_NEAR_MAX_FACTOR = 0.95;
 const NON_AMINO_NUTRIENTS = new Set([
   'Energy',
   'Protein',
@@ -293,12 +294,19 @@ export function calculateDiet(inputs: CalculationInputs): CalculationOutputs {
     modular: modularFormula || undefined,
   };
 
-  const completionTargets: Array<{
+  const specialCompletionTargets: Array<{
     nutrient: CompletionNutrient;
     target?: number;
     label: string;
   }> = [
     { nutrient: 'Protein', target: targetProtein, label: 'protein' },
+  ];
+
+  const modularCompletionTargets: Array<{
+    nutrient: CompletionNutrient;
+    target?: number;
+    label: string;
+  }> = [
     { nutrient: 'Energy', target: targetEnergy, label: 'calories' },
     { nutrient: 'Carbohydrate', target: targetCarbohydrate, label: 'carbohydrate' },
     { nutrient: 'Fat', target: targetFat, label: 'fat' },
@@ -314,7 +322,8 @@ export function calculateDiet(inputs: CalculationInputs): CalculationOutputs {
     const standardElementPer100 = formulaNutrient(standardFormula, row.nutrient);
     if (typeof standardElementPer100 !== 'number' || standardElementPer100 <= EPSILON) return;
 
-    const maxAmountForThisElement = (row.totalMax * 100) / standardElementPer100;
+    const nearUpperLimit = row.totalMax * STANDARD_NEAR_MAX_FACTOR;
+    const maxAmountForThisElement = (nearUpperLimit * 100) / standardElementPer100;
     if (maxAmountForThisElement < maxStandardFromElements) {
       maxStandardFromElements = maxAmountForThisElement;
       limitingNutrientForStandard = row.nutrient;
@@ -347,7 +356,9 @@ export function calculateDiet(inputs: CalculationInputs): CalculationOutputs {
   if (limitingNutrientForStandard) {
     if (specialFormula) {
       planNotes.push(
-        `${limitingNutrientForStandard} reached its highest allowed level from standard formula. Special formula will complete remaining needs.`,
+        `${limitingNutrientForStandard} reached near upper safe level from standard formula (${Math.round(
+          STANDARD_NEAR_MAX_FACTOR * 100,
+        )}% of max). Special formula will complete remaining protein.`,
       );
     } else {
       planNotes.push(
@@ -361,7 +372,7 @@ export function calculateDiet(inputs: CalculationInputs): CalculationOutputs {
     specialAmount = requiredAmountForFormulaCompletion({
       formula: specialFormula,
       formulaLabel: 'Special formula',
-      completionTargets,
+      completionTargets: specialCompletionTargets,
       planItems,
       formulaByRole,
       planNotes,
@@ -379,12 +390,12 @@ export function calculateDiet(inputs: CalculationInputs): CalculationOutputs {
     planItems.push(specialItem);
   } else if (
     hasRemainingCompletionDeficit({
-      completionTargets,
+      completionTargets: specialCompletionTargets,
       planItems,
       formulaByRole,
     })
   ) {
-    planNotes.push('No special formula selected. Remaining deficits will be handled by modular.');
+    planNotes.push('No special formula selected while protein deficit exists.');
   }
 
   let modularAmount = 0;
@@ -392,7 +403,7 @@ export function calculateDiet(inputs: CalculationInputs): CalculationOutputs {
     modularAmount = requiredAmountForFormulaCompletion({
       formula: modularFormula,
       formulaLabel: 'Modular formula',
-      completionTargets,
+      completionTargets: modularCompletionTargets,
       planItems,
       formulaByRole,
       planNotes,
@@ -410,7 +421,7 @@ export function calculateDiet(inputs: CalculationInputs): CalculationOutputs {
     planItems.push(modularItem);
   } else if (
     hasRemainingCompletionDeficit({
-      completionTargets,
+      completionTargets: modularCompletionTargets,
       planItems,
       formulaByRole,
     })

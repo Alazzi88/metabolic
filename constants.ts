@@ -187,7 +187,7 @@ export const UI_STRINGS = {
     deliveredEnergy: 'طاقة من الـ Standard',
     proteinDeficit: 'العجز البروتيني',
     energyDeficit: 'العجز الطاقي',
-    reference: 'المصدر: جداول Ross Products Division (2001) + نشرات المنتجات المرفوعة داخل المحادثة',
+    reference: '',
     noFormula: 'لا توجد بيانات كافية لحساب الـ Standard Formula لهذا المرض من الجداول المتاحة.',
   },
   en: {
@@ -280,7 +280,7 @@ export const UI_STRINGS = {
     deliveredEnergy: 'Energy from standard',
     proteinDeficit: 'Protein deficit',
     energyDeficit: 'Energy deficit',
-    reference: 'Source: Ross Products Division (2001) tables + uploaded product sheets in this chat',
+    reference: '',
     noFormula: 'Insufficient standard-formula data for this disease from the provided tables.',
   },
 };
@@ -2001,8 +2001,7 @@ export const STANDARD_FORMULA_BY_DISEASE: Record<DiseaseType, FormulaReference |
   [DiseaseType.UCD]: STANDARD_UNIFIED_CASE_100G,
 };
 
-export const REFERENCE_TEXT =
-  'Source locked to user-provided Ross Products Division (2001) tables and uploaded product sheets. The final case-study image is used as output style example only.';
+export const REFERENCE_TEXT = '';
 
 export const FORMULA_OPTIONS: FormulaOption[] = [
   {
@@ -2461,8 +2460,6 @@ export const FORMULA_OPTIONS: FormulaOption[] = [
       Protein: 0,
       Carbohydrate: 70,
       Fat: 28,
-      LinoleicAcid: 3000,
-      LinolenicAcid: 300,
     },
   },
 ];

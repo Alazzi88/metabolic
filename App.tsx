@@ -15,13 +15,13 @@ import {
   FORMULA_OPTION_BY_ID,
   FORMULA_OPTIONS,
   GUIDELINES,
-  REFERENCE_TEXT,
   SUPPORTED_DISEASES,
   UI_STRINGS,
 } from './constants';
 import { calculateDiet } from './calculators';
 
 const TARGET_MODES: TargetMode[] = ['MIN', 'MID', 'MAX'];
+const FOCUSED_STANDARD_NUTRIENTS = ['PHE', 'TYR', 'LEU', 'ILE', 'VAL', 'MET', 'THR', 'LYS', 'TRP'];
 
 const NUTRIENT_LABELS: Record<string, string> = {
   Energy: 'Energy',
@@ -365,10 +365,27 @@ const App: React.FC = () => {
   }, [selector.modular, disease, customModular]);
 
   const standardGuideNutrients = useMemo(() => {
+    const diseaseNutrients = new Set<string>();
+
+    Object.keys(guides[safeAgeIndex]?.nutrients || {}).forEach((nutrient) => {
+      nutrient
+        .split('+')
+        .map((part) => part.trim())
+        .filter(Boolean)
+        .forEach((part) => diseaseNutrients.add(part));
+    });
+
+    const focusedByDisease = FOCUSED_STANDARD_NUTRIENTS.filter(
+      (nutrient) =>
+        diseaseNutrients.has(nutrient) && typeof resolvedStandard.values[nutrient] === 'number',
+    );
+
+    if (focusedByDisease.length > 0) return focusedByDisease;
+
     return Object.keys(resolvedStandard.values).filter(
       (key) => key !== 'Energy' && key !== 'Protein',
     );
-  }, [resolvedStandard]);
+  }, [resolvedStandard, guides, safeAgeIndex]);
 
   const calcInputs: CalculationInputs = useMemo(
     () => ({
@@ -806,49 +823,6 @@ const App: React.FC = () => {
         </section>
 
         <section className="panel p-4 md:p-6">
-          <h2 className="font-bold mb-3">{t.summaryTitle}</h2>
-          <div className="grid grid-cols-1 gap-3 text-sm">
-            <div className="subcard border border-slate-300 rounded p-3 space-y-1">
-              <p>
-                {t.targetEnergy}:{' '}
-                <strong dir="ltr">
-                  {typeof results.highlights.targetEnergy === 'number'
-                    ? `${formatNumber(results.highlights.targetEnergy, 'kcal/day')} kcal/day`
-                    : '-'}
-                </strong>
-              </p>
-              <p>
-                {t.targetProtein}:{' '}
-                <strong dir="ltr">
-                  {typeof results.highlights.targetProtein === 'number'
-                    ? `${formatNumber(results.highlights.targetProtein, 'g/day')} g/day`
-                    : '-'}
-                </strong>
-              </p>
-              <p>
-                {t.targetFluid}:{' '}
-                <strong dir="ltr">
-                  {typeof results.highlights.targetFluid === 'number'
-                    ? `${formatNumber(results.highlights.targetFluid, 'mL/day')} mL/day`
-                    : '-'}
-                </strong>
-              </p>
-              <p>
-                {t.primaryLimit}:{' '}
-                <strong dir="ltr">
-                  {results.highlights.primaryLimit
-                    ? `${results.highlights.primaryLimit.nutrient} = ${formatNumber(
-                        results.highlights.primaryLimit.value,
-                        results.highlights.primaryLimit.unit,
-                      )} ${results.highlights.primaryLimit.unit}`
-                    : '-'}
-                </strong>
-              </p>
-            </div>
-          </div>
-        </section>
-
-        <section className="panel p-4 md:p-6">
           <h2 className="font-bold mb-3">{t.planTitle}</h2>
           <div className="overflow-x-auto">
             <table className="data-table w-full text-sm border border-slate-300">
@@ -859,7 +833,6 @@ const App: React.FC = () => {
                   <th className="border border-slate-300 px-2 py-1 text-start">{t.amount}</th>
                   <th className="border border-slate-300 px-2 py-1 text-start">{t.kcal}</th>
                   <th className="border border-slate-300 px-2 py-1 text-start">{t.protein}</th>
-                  <th className="border border-slate-300 px-2 py-1 text-start">{t.limiterDelivered}</th>
                   <th className="border border-slate-300 px-2 py-1 text-start">{t.scoops}</th>
                   <th className="border border-slate-300 px-2 py-1 text-start">{t.water}</th>
                   <th className="border border-slate-300 px-2 py-1 text-start">{t.perFeedAmount}</th>
@@ -878,11 +851,6 @@ const App: React.FC = () => {
                     </td>
                     <td className="border border-slate-300 px-2 py-1" dir="ltr">
                       {formatNumber(item.protein, 'g/day')} g/day
-                    </td>
-                    <td className="border border-slate-300 px-2 py-1" dir="ltr">
-                      {typeof item.primaryLimiterDelivered === 'number' && results.highlights.primaryLimit
-                        ? `${formatNumber(item.primaryLimiterDelivered, results.highlights.primaryLimit.unit)} ${results.highlights.primaryLimit.unit}`
-                        : '-'}
                     </td>
                     <td className="border border-slate-300 px-2 py-1" dir="ltr">
                       {typeof item.scoops === 'number' ? `${formatNumber(item.scoops, 'g/day')}` : '-'}
@@ -996,11 +964,6 @@ const App: React.FC = () => {
               ))}
             </div>
           </div>
-        </section>
-
-        <section className="panel panel-muted p-4 md:p-6 text-xs text-slate-600 space-y-1">
-          <p>{t.reference}</p>
-          <p>{REFERENCE_TEXT}</p>
         </section>
 
         <footer className="text-center text-xs text-slate-500 space-y-1 pb-8">
