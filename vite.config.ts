@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => {
         react(),
         VitePWA({
           registerType: 'autoUpdate',
-          includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
+          includeAssets: ['logo.png', 'favicon.svg', 'apple-touch-icon.png'],
           manifest: {
             id: '/',
             name: 'Metabolic Formula Pro',
@@ -26,6 +26,12 @@ export default defineConfig(({ mode }) => {
             start_url: '/',
             scope: '/',
             icons: [
+              {
+                src: 'logo.png',
+                sizes: '1408x736',
+                type: 'image/png',
+                purpose: 'any',
+              },
               {
                 src: 'icons/pwa-192x192.png',
                 sizes: '192x192',
@@ -65,16 +71,6 @@ export default defineConfig(({ mode }) => {
                     maxEntries: 20,
                     maxAgeSeconds: 60 * 60 * 24 * 365,
                   },
-                  cacheableResponse: {
-                    statuses: [0, 200],
-                  },
-                },
-              },
-              {
-                urlPattern: /^https:\/\/cdn\.tailwindcss\.com\/.*/i,
-                handler: 'StaleWhileRevalidate',
-                options: {
-                  cacheName: 'tailwind-cdn',
                   cacheableResponse: {
                     statuses: [0, 200],
                   },

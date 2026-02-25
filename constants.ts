@@ -122,7 +122,7 @@ export const UI_STRINGS = {
     standardGuidelineRow: 'Standard formula',
     standardFormula: 'Standard Formula',
     specialFormula: 'Special Formula',
-    modularFormula: 'modular',
+    modularFormula: 'Modular',
     formulaOption: 'نوع الفورمولا',
     noneOption: 'بدون',
     customOption: 'مخصص (إدخال يدوي)',
@@ -177,7 +177,7 @@ export const UI_STRINGS = {
     orderTitle: 'Order جاهز',
     orderStandard: 'Standard',
     orderSpecial: 'Special',
-    orderModular: 'modular',
+    orderModular: 'Modular',
     orderNote: 'ملاحظة',
     standardTitle: 'ملخص الـ Standard',
     formulaName: 'الفورمولا',
@@ -215,7 +215,7 @@ export const UI_STRINGS = {
     standardGuidelineRow: 'Standard formula',
     standardFormula: 'Standard Formula',
     specialFormula: 'Special Formula',
-    modularFormula: 'modular',
+    modularFormula: 'Modular',
     formulaOption: 'Formula type',
     noneOption: 'None',
     customOption: 'Custom (manual input)',
@@ -270,7 +270,7 @@ export const UI_STRINGS = {
     orderTitle: 'Ready Order',
     orderStandard: 'Standard',
     orderSpecial: 'Special',
-    orderModular: 'modular',
+    orderModular: 'Modular',
     orderNote: 'Note',
     standardTitle: 'Standard Summary',
     formulaName: 'Formula',
@@ -2417,7 +2417,7 @@ export const FORMULA_OPTIONS: FormulaOption[] = [
     name: 'Special Formula (Pro-Phree, 100g)',
     basis: '100g',
     values: { Energy: 510, Protein: 0 },
-    diseases: [DiseaseType.GA_TYPE_I, DiseaseType.GA_TYPE_II, DiseaseType.LPI, DiseaseType.MMA_PA, DiseaseType.GALACTOSEMIA],
+    diseases: [DiseaseType.GA_TYPE_I, DiseaseType.GA_TYPE_II, DiseaseType.LPI, DiseaseType.GALACTOSEMIA],
   },
   {
     id: 'CYCLINEX1_100G',
@@ -2436,56 +2436,85 @@ export const FORMULA_OPTIONS: FormulaOption[] = [
     diseases: [DiseaseType.UCD],
   },
   {
-    id: 'PRO_PHREE_100G',
+    id: 'FANTOMALT_100G',
     role: 'modular',
-    name: 'Pro-Phree (100g)',
+    name: 'Fantomalt (100g)',
     basis: '100g',
-    values: { Energy: 510, Protein: 0 },
-    diseases: [DiseaseType.LPI, DiseaseType.MMA_PA, DiseaseType.UCD],
+    values: {
+      Energy: 384,
+      Protein: 0,
+      Carbohydrate: 96,
+      Fat: 0,
+    },
+    note: 'Source: Fantomalt Fact Sheet SA - FC (per 100g).',
   },
   {
-    id: 'DUOCAL_100G',
+    id: 'SS_DUOCAL_100G',
     role: 'modular',
-    name: 'Protein-free Formula (Duocal, 100g)',
+    name: 'Super Soluble Duocal (100g)',
     basis: '100g',
-    values: { Energy: 492, Protein: 0 },
+    values: {
+      Energy: 492,
+      Protein: 0,
+      Carbohydrate: 72.7,
+      Fat: 22.3,
+    },
+    note: 'Source: Super Soluble Duocal Fact Sheet SA - FC (per 100g).',
   },
   {
-    id: 'MODULA_100G',
+    id: 'CAL_POWDER_100G',
     role: 'modular',
-    name: 'modular (100g dry powder)',
+    name: 'CAL Powder (100g)',
     basis: '100g',
     values: {
       Energy: 511,
       Protein: 0,
       Carbohydrate: 70,
       Fat: 28,
+      LinoleicAcid: 3000,
+      LinolenicAcid: 300,
     },
+    note: 'Source: CAL Powder Data Sheet (per 100g dry powder).',
+  },
+  {
+    id: 'CARBOCH_100G',
+    role: 'modular',
+    name: 'CarboCH (100g)',
+    basis: '100g',
+    values: {
+      Energy: 380,
+      Protein: 0,
+      Carbohydrate: 95,
+      Fat: 0,
+    },
+    note: 'Estimated from product image: 95 kcal per 25g sachet.',
   },
 ];
 
-export const FORMULA_OPTION_BY_ID: Record<string, FormulaOption> = FORMULA_OPTIONS.reduce(
-  (acc, item) => ({ ...acc, [item.id]: item }),
-  {} as Record<string, FormulaOption>,
-);
+const formulaOptionById: Record<string, FormulaOption> = {};
+for (const item of FORMULA_OPTIONS) {
+  formulaOptionById[item.id] = item;
+}
+
+export const FORMULA_OPTION_BY_ID: Record<string, FormulaOption> = formulaOptionById;
 
 export const DEFAULT_FORMULA_SELECTION: Record<
   DiseaseType,
   { standard: string; special?: string; modular?: string }
 > = {
-  [DiseaseType.PKU]: { standard: 'STANDARD_UNIFIED_CASE_100G', special: 'PKU_NUTRI_1_ENERGY_100G', modular: 'MODULA_100G' },
-  [DiseaseType.TYR_I_IA_IB]: { standard: 'STANDARD_UNIFIED_CASE_100G', special: 'TYR_ANAMIX_INFANT_100G', modular: 'DUOCAL_100G' },
-  [DiseaseType.TYR_II_III]: { standard: 'STANDARD_UNIFIED_CASE_100G', special: 'TYR_ANAMIX_INFANT_100G', modular: 'DUOCAL_100G' },
-  [DiseaseType.MSUD]: { standard: 'STANDARD_UNIFIED_CASE_100G', special: 'MSUD_ANAMIX_INFANT_100G', modular: 'MODULA_100G' },
-  [DiseaseType.LEU_CATABOLISM]: { standard: 'STANDARD_UNIFIED_CASE_100G', special: 'IVA_ANAMIX_INFANT_100G', modular: 'MODULA_100G' },
-  [DiseaseType.BETA_KETOTHIOLASE]: { standard: 'STANDARD_UNIFIED_CASE_100G', special: 'KETONEX1_100G', modular: 'PRO_PHREE_100G' },
-  [DiseaseType.HOMOCYSTINURIA]: { standard: 'STANDARD_UNIFIED_CASE_100G', special: 'HOMINEX1_100G', modular: 'PRO_PHREE_100G' },
-  [DiseaseType.GA_TYPE_I]: { standard: 'STANDARD_UNIFIED_CASE_100G', special: 'GA1_ANAMIX_INFANT_100G', modular: 'MODULA_100G' },
-  [DiseaseType.GA_TYPE_II]: { standard: 'STANDARD_UNIFIED_CASE_100G', special: 'SPECIAL_PRO_PHREE_100G', modular: 'PRO_PHREE_100G' },
-  [DiseaseType.LPI]: { standard: 'STANDARD_UNIFIED_CASE_100G', special: 'SPECIAL_PRO_PHREE_100G', modular: 'PRO_PHREE_100G' },
-  [DiseaseType.MMA_PA]: { standard: 'STANDARD_UNIFIED_CASE_100G', special: 'MMA_PA_ANAMIX_INFANT_100G', modular: 'PRO_PHREE_100G' },
-  [DiseaseType.GALACTOSEMIA]: { standard: 'STANDARD_UNIFIED_CASE_100G', special: 'SPECIAL_PRO_PHREE_100G', modular: 'PRO_PHREE_100G' },
-  [DiseaseType.UCD]: { standard: 'STANDARD_UNIFIED_CASE_100G', special: 'UCD_ANAMIX_INFANT_100G', modular: 'MODULA_100G' },
+  [DiseaseType.PKU]: { standard: 'STANDARD_UNIFIED_CASE_100G', special: 'PKU_NUTRI_1_ENERGY_100G', modular: 'CAL_POWDER_100G' },
+  [DiseaseType.TYR_I_IA_IB]: { standard: 'STANDARD_UNIFIED_CASE_100G', special: 'TYR_ANAMIX_INFANT_100G', modular: 'CAL_POWDER_100G' },
+  [DiseaseType.TYR_II_III]: { standard: 'STANDARD_UNIFIED_CASE_100G', special: 'TYR_ANAMIX_INFANT_100G', modular: 'CAL_POWDER_100G' },
+  [DiseaseType.MSUD]: { standard: 'STANDARD_UNIFIED_CASE_100G', special: 'MSUD_ANAMIX_INFANT_100G', modular: 'CAL_POWDER_100G' },
+  [DiseaseType.LEU_CATABOLISM]: { standard: 'STANDARD_UNIFIED_CASE_100G', special: 'IVA_ANAMIX_INFANT_100G', modular: 'CAL_POWDER_100G' },
+  [DiseaseType.BETA_KETOTHIOLASE]: { standard: 'STANDARD_UNIFIED_CASE_100G', special: 'KETONEX1_100G', modular: 'CAL_POWDER_100G' },
+  [DiseaseType.HOMOCYSTINURIA]: { standard: 'STANDARD_UNIFIED_CASE_100G', special: 'HOMINEX1_100G', modular: 'CAL_POWDER_100G' },
+  [DiseaseType.GA_TYPE_I]: { standard: 'STANDARD_UNIFIED_CASE_100G', special: 'GA1_ANAMIX_INFANT_100G', modular: 'CAL_POWDER_100G' },
+  [DiseaseType.GA_TYPE_II]: { standard: 'STANDARD_UNIFIED_CASE_100G', special: 'SPECIAL_PRO_PHREE_100G', modular: 'CAL_POWDER_100G' },
+  [DiseaseType.LPI]: { standard: 'STANDARD_UNIFIED_CASE_100G', special: 'SPECIAL_PRO_PHREE_100G', modular: 'CAL_POWDER_100G' },
+  [DiseaseType.MMA_PA]: { standard: 'STANDARD_UNIFIED_CASE_100G', special: 'MMA_PA_ANAMIX_INFANT_100G', modular: 'CAL_POWDER_100G' },
+  [DiseaseType.GALACTOSEMIA]: { standard: 'STANDARD_UNIFIED_CASE_100G', special: 'SPECIAL_PRO_PHREE_100G', modular: 'CAL_POWDER_100G' },
+  [DiseaseType.UCD]: { standard: 'STANDARD_UNIFIED_CASE_100G', special: 'UCD_ANAMIX_INFANT_100G', modular: 'CAL_POWDER_100G' },
 };
 
 export const SUPPORTED_DISEASES: DiseaseType[] = [
@@ -2504,37 +2533,37 @@ export const FORMULA_LIBRARY_BY_DISEASE: Partial<
   [DiseaseType.PKU]: {
     standard: ['STANDARD_UNIFIED_CASE_100G'],
     special: ['PKU_NUTRI_1_ENERGY_100G', 'PKU_NUTRI_2_ENERGY_100G', 'COMIDA_PKU_A_100G', 'COMIDA_PKU_B_100G'],
-    modular: ['MODULA_100G'],
+    modular: ['CAL_POWDER_100G', 'SS_DUOCAL_100G', 'FANTOMALT_100G', 'CARBOCH_100G'],
   },
   [DiseaseType.TYR_I_IA_IB]: {
     standard: ['STANDARD_UNIFIED_CASE_100G'],
     special: ['TYR_ANAMIX_INFANT_100G', 'TYREX1_100G', 'TYREX2_100G'],
-    modular: ['DUOCAL_100G'],
+    modular: ['CAL_POWDER_100G', 'SS_DUOCAL_100G', 'FANTOMALT_100G', 'CARBOCH_100G'],
   },
   [DiseaseType.MSUD]: {
     standard: ['STANDARD_UNIFIED_CASE_100G'],
     special: ['MSUD_ANAMIX_INFANT_100G', 'MSUD_ANAMIX_JUNIOR_100G', 'COMIDA_MSUD_A_100G', 'COMIDA_MSUD_B_100G'],
-    modular: ['MODULA_100G'],
+    modular: ['CAL_POWDER_100G', 'SS_DUOCAL_100G', 'FANTOMALT_100G', 'CARBOCH_100G'],
   },
   [DiseaseType.LEU_CATABOLISM]: {
     standard: ['STANDARD_UNIFIED_CASE_100G'],
     special: ['IVA_ANAMIX_INFANT_100G', 'IVA_ANAMIX_JUNIOR_100G', 'COMIDA_LEU_A_100G', 'COMIDA_LEU_B_100G'],
-    modular: ['MODULA_100G'],
+    modular: ['CAL_POWDER_100G', 'SS_DUOCAL_100G', 'FANTOMALT_100G', 'CARBOCH_100G'],
   },
   [DiseaseType.GA_TYPE_I]: {
     standard: ['STANDARD_UNIFIED_CASE_100G'],
     special: ['GA1_ANAMIX_INFANT_100G', 'GA1_ANAMIX_JUNIOR_100G', 'COMIDA_GAC_A_100G', 'COMIDA_GAC_A_FORMULA_100G'],
-    modular: ['MODULA_100G'],
+    modular: ['CAL_POWDER_100G', 'SS_DUOCAL_100G', 'FANTOMALT_100G', 'CARBOCH_100G'],
   },
   [DiseaseType.MMA_PA]: {
     standard: ['STANDARD_UNIFIED_CASE_100G'],
-    special: ['MMA_PA_ANAMIX_INFANT_100G', 'MMA_PA_ANAMIX_JUNIOR_100G', 'SPECIAL_PRO_PHREE_100G'],
-    modular: ['PRO_PHREE_100G', 'MODULA_100G'],
+    special: ['MMA_PA_ANAMIX_INFANT_100G', 'MMA_PA_ANAMIX_JUNIOR_100G'],
+    modular: ['CAL_POWDER_100G', 'SS_DUOCAL_100G', 'FANTOMALT_100G', 'CARBOCH_100G'],
   },
   [DiseaseType.UCD]: {
     standard: ['STANDARD_UNIFIED_CASE_100G'],
     special: ['UCD_ANAMIX_INFANT_100G', 'UCD_ANAMIX_JUNIOR_100G', 'COMIDA_URC_A_100G', 'COMIDA_URC_B_100G'],
-    modular: ['MODULA_100G'],
+    modular: ['CAL_POWDER_100G', 'SS_DUOCAL_100G', 'FANTOMALT_100G', 'CARBOCH_100G'],
   },
 };
 

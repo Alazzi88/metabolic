@@ -3,6 +3,7 @@ import {
   CalculationInputs,
   DiseaseType,
   FormulaAgeGroup,
+  FormulaContribution,
   FormulaReference,
   FormulaRole,
   NutrientRange,
@@ -10,6 +11,7 @@ import {
 } from './types';
 import {
   DEFAULT_FORMULA_SELECTION,
+  DISEASE_ANALYSIS_NUTRIENTS,
   DISEASE_METADATA,
   FORMULA_LIBRARY_BY_DISEASE,
   FORMULA_OPTION_BY_ID,
@@ -22,6 +24,16 @@ import { calculateDiet } from './calculators';
 
 const TARGET_MODES: TargetMode[] = ['MIN', 'MID', 'MAX'];
 const FOCUSED_STANDARD_NUTRIENTS = ['PHE', 'TYR', 'LEU', 'ILE', 'VAL', 'MET', 'THR', 'LYS', 'TRP'];
+const CUSTOM_NUTRIENT_PRIORITY = ['PHE', 'TYR', 'LEU', 'ILE', 'VAL', 'MET', 'CYS', 'THR', 'LYS', 'TRP'];
+const NON_DISEASE_CUSTOM_NUTRIENTS = new Set([
+  'Energy',
+  'Protein',
+  'Fluid',
+  'Carbohydrate',
+  'Fat',
+  'LinoleicAcid',
+  'LinolenicAcid',
+]);
 
 const NUTRIENT_LABELS: Record<string, string> = {
   Energy: 'Energy',
@@ -55,9 +67,9 @@ type CustomFormulaState = {
   basis: '100g' | '100mL';
   kcal: number;
   protein: number;
-  limiter: number;
   carbohydrate: number;
   fat: number;
+  nutrients: Record<string, number>;
 };
 
 function initialSelectorForDisease(disease: DiseaseType): FormulaSelectorState {
@@ -70,27 +82,52 @@ function initialSelectorForDisease(disease: DiseaseType): FormulaSelectorState {
 }
 
 function defaultCustomFormula(role: FormulaRole): CustomFormulaState {
-  if (role === 'modular') {
-    return {
-      name: 'Custom modular',
-      basis: '100g',
-      kcal: Number.NaN,
-      protein: Number.NaN,
-      limiter: Number.NaN,
-      carbohydrate: Number.NaN,
-      fat: Number.NaN,
-    };
-  }
-
   return {
-    name: role === 'standard' ? 'Custom Standard' : 'Custom Special',
+    name:
+      role === 'standard'
+        ? 'Custom Standard'
+        : role === 'special'
+          ? 'Custom Special'
+          : 'Custom Modular',
     basis: '100g',
     kcal: Number.NaN,
     protein: Number.NaN,
-    limiter: Number.NaN,
     carbohydrate: Number.NaN,
     fat: Number.NaN,
+    nutrients: {},
   };
+}
+
+function diseaseSpecificNutrients(disease: DiseaseType): string[] {
+  const nutrientSet = new Set<string>();
+  const diseaseGuides = GUIDELINES[disease];
+  const analysisNutrients = DISEASE_ANALYSIS_NUTRIENTS[disease] || [];
+
+  const collect = (nutrient: string) => {
+    nutrient
+      .split('+')
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .forEach((part) => {
+        if (!NON_DISEASE_CUSTOM_NUTRIENTS.has(part)) {
+          nutrientSet.add(part);
+        }
+      });
+  };
+
+  diseaseGuides.forEach((guide) => {
+    Object.keys(guide.nutrients).forEach(collect);
+  });
+  analysisNutrients.forEach(collect);
+
+  return Array.from(nutrientSet).sort((a, b) => {
+    const indexA = CUSTOM_NUTRIENT_PRIORITY.indexOf(a);
+    const indexB = CUSTOM_NUTRIENT_PRIORITY.indexOf(b);
+    if (indexA >= 0 && indexB >= 0) return indexA - indexB;
+    if (indexA >= 0) return -1;
+    if (indexB >= 0) return 1;
+    return a.localeCompare(b);
+  });
 }
 
 function decimalsForUnit(unit: string): number {
@@ -159,10 +196,70 @@ function formulaValueUnit(key: string): string {
   return 'mg';
 }
 
+function formulaValueDailyUnit(key: string): 'g/day' | 'mg/day' | 'kcal/day' {
+  const unit = formulaValueUnit(key);
+  if (unit === 'kcal') return 'kcal/day';
+  if (unit === 'g') return 'g/day';
+  return 'mg/day';
+}
+
 function roleLabel(role: FormulaRole, t: typeof UI_STRINGS.en): string {
   if (role === 'standard') return t.standardFormula;
   if (role === 'special') return t.specialFormula;
   return t.modularFormula;
+}
+
+function orderAmountUnit(amountUnit: FormulaContribution['amountUnit']): 'g' | 'mL' {
+  return amountUnit === 'g/day' ? 'g' : 'mL';
+}
+
+function roundedScoopCount(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  const base = Math.floor(value);
+  return value - base < 0.5 ? base : base + 1;
+}
+
+function formatRoundedScoopCount(value: number): string {
+  const rounded = roundedScoopCount(value);
+  const isRounded = Math.abs(value - rounded) > 1e-6;
+  const scoopWord = rounded === 1 ? 'scoop' : 'scoops';
+  return `${isRounded ? '=~ ' : ''}${rounded} ${scoopWord}`;
+}
+
+function safeFeedCountForOrder(value: number): number {
+  if (!Number.isFinite(value) || value <= 0) return 1;
+  return Math.max(1, Math.floor(value));
+}
+
+function formatHourInterval(feedsPerDayValue: number): string {
+  const interval = 24 / safeFeedCountForOrder(feedsPerDayValue);
+  if (Number.isInteger(interval)) return `${interval}`;
+  return interval.toFixed(1);
+}
+
+function cleanOrderFormulaName(name: string): string {
+  return name
+    .replace(/\s*\(Unified Case,\s*100g\)/gi, '')
+    .replace(/\s*\(0-12 months,\s*100g\)/gi, '')
+    .replace(/\s*\(0-1 year,\s*100g\)/gi, '')
+    .replace(/\s*\(100g dry powder\)/gi, '')
+    .replace(/\s*\(Standard Formula\)/gi, '')
+    .replace(/\s*\(Special Formula\)/gi, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+function formatOrderMixPart(
+  item: FormulaContribution,
+): string {
+  const amountText = `${formatNumber(item.amount, item.amountUnit)} ${orderAmountUnit(item.amountUnit)}`;
+  const scoopText =
+    typeof item.scoops === 'number'
+      ? ` (${formatRoundedScoopCount(item.scoops)})`
+      : '';
+  const cleanedFormulaName = cleanOrderFormulaName(item.formulaName);
+
+  return `${amountText}${scoopText} from ${cleanedFormulaName}`;
 }
 
 function statusLabel(
@@ -236,24 +333,35 @@ function roleOptions(role: FormulaRole, disease: DiseaseType, ageGroup: FormulaA
 
 function toCustomFormula(
   role: FormulaRole,
-  disease: DiseaseType,
   custom: CustomFormulaState,
+  customDiseaseNutrients: string[],
 ): FormulaReference {
-  const primaryLimiter = DISEASE_METADATA[disease].primaryLimiter;
-  const values: Record<string, number> = {
-    Energy: custom.kcal,
-    Protein: custom.protein,
-  };
+  const values: Record<string, number> = {};
+
+  if (Number.isFinite(custom.kcal) && custom.kcal >= 0) {
+    values.Energy = custom.kcal;
+  }
+
+  if (Number.isFinite(custom.protein) && custom.protein >= 0) {
+    values.Protein = custom.protein;
+  }
 
   if (role === 'modular') {
-    if (custom.carbohydrate > 0) {
+    if (Number.isFinite(custom.carbohydrate) && custom.carbohydrate >= 0) {
       values.Carbohydrate = custom.carbohydrate;
     }
-    if (custom.fat > 0) {
+    if (Number.isFinite(custom.fat) && custom.fat >= 0) {
       values.Fat = custom.fat;
     }
-  } else if (primaryLimiter && custom.limiter > 0) {
-    values[primaryLimiter] = custom.limiter;
+  }
+
+  if (role !== 'modular') {
+    customDiseaseNutrients.forEach((nutrient) => {
+      const value = custom.nutrients[nutrient];
+      if (Number.isFinite(value) && value >= 0) {
+        values[nutrient] = value;
+      }
+    });
   }
 
   return {
@@ -279,11 +387,11 @@ const App: React.FC = () => {
 
   const t = UI_STRINGS.en;
   const diseaseMeta = DISEASE_METADATA[disease].en;
-  const primaryLimiter = DISEASE_METADATA[disease].primaryLimiter || 'Limiter';
 
   const guides = GUIDELINES[disease];
   const safeAgeIndex = Math.min(Math.max(0, ageGroupIndex), guides.length - 1);
   const formulaAgeGroup = formulaAgeGroupFromAgeLabel(guides[safeAgeIndex]?.ageLabel || '');
+  const customDiseaseNutrients = useMemo(() => diseaseSpecificNutrients(disease), [disease]);
 
   useEffect(() => {
     document.documentElement.dir = 'ltr';
@@ -340,29 +448,33 @@ const App: React.FC = () => {
 
   const resolvedStandard = useMemo(() => {
     if (selector.standard === 'CUSTOM') {
-      return toCustomFormula('standard', disease, customStandard);
+      return toCustomFormula('standard', customStandard, customDiseaseNutrients);
     }
 
-    return FORMULA_OPTION_BY_ID[selector.standard] || standardOptions[0] || toCustomFormula('standard', disease, customStandard);
-  }, [selector.standard, disease, customStandard, standardOptions]);
+    return (
+      FORMULA_OPTION_BY_ID[selector.standard] ||
+      standardOptions[0] ||
+      toCustomFormula('standard', customStandard, customDiseaseNutrients)
+    );
+  }, [selector.standard, customStandard, customDiseaseNutrients, standardOptions]);
 
   const resolvedSpecial = useMemo(() => {
     if (selector.special === 'NONE') return null;
     if (selector.special === 'CUSTOM') {
-      return toCustomFormula('special', disease, customSpecial);
+      return toCustomFormula('special', customSpecial, customDiseaseNutrients);
     }
 
     return FORMULA_OPTION_BY_ID[selector.special] || null;
-  }, [selector.special, disease, customSpecial]);
+  }, [selector.special, customSpecial, customDiseaseNutrients]);
 
   const resolvedModular = useMemo(() => {
     if (selector.modular === 'NONE') return null;
     if (selector.modular === 'CUSTOM') {
-      return toCustomFormula('modular', disease, customModular);
+      return toCustomFormula('modular', customModular, customDiseaseNutrients);
     }
 
     return FORMULA_OPTION_BY_ID[selector.modular] || null;
-  }, [selector.modular, disease, customModular]);
+  }, [selector.modular, customModular, customDiseaseNutrients]);
 
   const standardGuideNutrients = useMemo(() => {
     const diseaseNutrients = new Set<string>();
@@ -386,6 +498,19 @@ const App: React.FC = () => {
       (key) => key !== 'Energy' && key !== 'Protein',
     );
   }, [resolvedStandard, guides, safeAgeIndex]);
+  const standardEffectNutrients = useMemo(
+    () =>
+      customDiseaseNutrients.length > 0 ? customDiseaseNutrients : standardGuideNutrients,
+    [customDiseaseNutrients, standardGuideNutrients],
+  );
+  const formulaByRole = useMemo<Record<FormulaRole, FormulaReference | null>>(
+    () => ({
+      standard: resolvedStandard,
+      special: resolvedSpecial,
+      modular: resolvedModular,
+    }),
+    [resolvedStandard, resolvedSpecial, resolvedModular],
+  );
 
   const calcInputs: CalculationInputs = useMemo(
     () => ({
@@ -425,6 +550,83 @@ const App: React.FC = () => {
       }, {}),
     [results.rows],
   );
+  const planItemByRole = useMemo<Partial<Record<FormulaRole, FormulaContribution>>>(() => {
+    return results.formulaPlan.items.reduce<Partial<Record<FormulaRole, FormulaContribution>>>(
+      (acc, item) => {
+        acc[item.role] = item;
+        return acc;
+      },
+      {},
+    );
+  }, [results.formulaPlan.items]);
+  const finalOrderMix = useMemo(() => {
+    const usedItems = results.formulaPlan.items.filter((item) => item.amount > 0.0001);
+    if (usedItems.length === 0) return '';
+    return `Mix ${usedItems.map((item) => formatOrderMixPart(item)).join(' + ')}`;
+  }, [results.formulaPlan.items]);
+  const totalScoopsPerDayOrder = useMemo(() => {
+    return formatRoundedScoopCount(results.formulaPlan.totals.scoops);
+  }, [results.formulaPlan.totals.scoops]);
+  const preparationInstruction = useMemo(() => {
+    if (results.formulaPlan.totals.scoops <= 0.0001) return '';
+
+    const feedCount = safeFeedCountForOrder(feedsPerDay);
+    const scoopsPerFeed = results.formulaPlan.totals.scoops / feedCount;
+    const waterPerScoopForOrder =
+      Number.isFinite(waterPerScoopMl) && waterPerScoopMl > 0 ? waterPerScoopMl : 30;
+    const roundedScoopsPerFeed = roundedScoopCount(scoopsPerFeed);
+    const waterPerFeed = roundedScoopsPerFeed * waterPerScoopForOrder;
+
+    return `Add ${formatRoundedScoopCount(scoopsPerFeed)} of mixed powder to ${formatNumber(
+      waterPerFeed,
+      'mL/day',
+    )} mL H2O q ${formatHourInterval(feedsPerDay)} hr.`;
+  }, [results.formulaPlan.totals.scoops, feedsPerDay, waterPerScoopMl]);
+  const modularDeficitRecommendations = useMemo(() => {
+    const carbohydrateBalance = results.formulaPlan.nutrientBalances.find(
+      (balance) => balance.nutrient === 'Carbohydrate',
+    );
+    const fatBalance = results.formulaPlan.nutrientBalances.find(
+      (balance) => balance.nutrient === 'Fat',
+    );
+
+    const deficits: Array<{
+      nutrient: 'Energy' | 'Carbohydrate' | 'Fat';
+      deficit: number;
+      unit: 'kcal/day' | 'g/day';
+    }> = [
+      { nutrient: 'Energy', deficit: results.formulaPlan.deficits.energy, unit: 'kcal/day' },
+      { nutrient: 'Carbohydrate', deficit: carbohydrateBalance?.deficitToTarget || 0, unit: 'g/day' },
+      { nutrient: 'Fat', deficit: fatBalance?.deficitToTarget || 0, unit: 'g/day' },
+    ].filter((item) => item.deficit > 0.0001);
+
+    return deficits.map((item) => {
+      let bestOption: (typeof modularOptions)[number] | undefined;
+      let bestPer100 = 0;
+
+      modularOptions.forEach((option) => {
+        const per100 = option.values[item.nutrient];
+        if (typeof per100 === 'number' && per100 > bestPer100) {
+          bestPer100 = per100;
+          bestOption = option;
+        }
+      });
+
+      if (!bestOption || bestPer100 <= 0) {
+        return {
+          ...item,
+          productName: '',
+          grams: Number.NaN,
+        };
+      }
+
+      return {
+        ...item,
+        productName: bestOption.name,
+        grams: (item.deficit * 100) / bestPer100,
+      };
+    });
+  }, [results.formulaPlan.deficits.energy, results.formulaPlan.nutrientBalances, modularOptions]);
 
   const onChangeDisease = (nextDisease: DiseaseType) => {
     setDisease(nextDisease);
@@ -439,9 +641,7 @@ const App: React.FC = () => {
   ) => {
     return (
       <div
-        className={`custom-grid grid grid-cols-1 ${
-          role === 'modular' ? 'md:grid-cols-6' : 'md:grid-cols-5'
-        } gap-2 mt-2 bg-slate-50 border border-slate-200 rounded p-2`}
+        className="custom-grid grid grid-cols-1 md:grid-cols-4 gap-2 mt-2 bg-slate-50 border border-slate-200 rounded p-2"
       >
         <label className="text-xs">
           <span className="block mb-1">{t.customName}</span>
@@ -512,22 +712,36 @@ const App: React.FC = () => {
               />
             </label>
           </>
-        ) : (
-          <label className="text-xs">
-            <span className="block mb-1">{t.limiterPerBasis} ({primaryLimiter})</span>
-            <input
-              type="number"
-              step="0.1"
-              value={numberInputValue(data.limiter)}
-              onChange={(e) => setData((prev) => ({ ...prev, limiter: parseFloatOrNaN(e.target.value) }))}
-              className="w-full border border-slate-300 rounded px-2 py-1.5"
-            />
-          </label>
-        )}
+        ) : null}
+
+        {role !== 'modular'
+          ? customDiseaseNutrients.map((nutrient) => (
+            <label key={`${role}-${nutrient}`} className="text-xs">
+              <span className="block mb-1">
+                {`${nutrientLabel(nutrient)} per 100 (${formulaValueUnit(nutrient)})`}
+              </span>
+              <input
+                type="number"
+                step="0.1"
+                value={numberInputValue(data.nutrients[nutrient] ?? Number.NaN)}
+                onChange={(e) =>
+                  setData((prev) => ({
+                    ...prev,
+                    nutrients: {
+                      ...prev.nutrients,
+                      [nutrient]: parseFloatOrNaN(e.target.value),
+                    },
+                  }))
+                }
+                className="w-full border border-slate-300 rounded px-2 py-1.5"
+              />
+            </label>
+          ))
+          : null}
 
         {role === 'modular' ? (
-          <p className="text-[11px] text-slate-500 md:col-span-6">
-            For modular, use carbohydrate and fat values. Primary limiter is not used.
+          <p className="text-[11px] text-slate-500 md:col-span-4">
+            For Modular, use carbohydrate and fat values. Primary limiter is not used.
           </p>
         ) : null}
       </div>
@@ -564,6 +778,97 @@ const App: React.FC = () => {
             })}
           </tbody>
         </table>
+      </div>
+    );
+  };
+
+  const renderRolePlanTable = (role: FormulaRole) => {
+    const item = planItemByRole[role];
+    const formula = formulaByRole[role];
+    const roleTitle = roleLabel(role, t);
+    const showEffectNutrients = role === 'standard';
+    const colSpan = 7 + (showEffectNutrients ? standardEffectNutrients.length : 0);
+
+    return (
+      <div className="subcard border border-slate-300 rounded p-3">
+        <p className="font-semibold mb-2">{roleTitle}</p>
+        <div className="overflow-x-auto">
+          <table className="data-table w-full text-sm border border-slate-300">
+            <thead className="bg-slate-100">
+              <tr>
+                <th className="border border-slate-300 px-2 py-1 text-start">{t.formulaName}</th>
+                <th className="border border-slate-300 px-2 py-1 text-start">{t.amount}</th>
+                <th className="border border-slate-300 px-2 py-1 text-start">{t.kcal}</th>
+                <th className="border border-slate-300 px-2 py-1 text-start">{t.protein}</th>
+                <th className="border border-slate-300 px-2 py-1 text-start">{t.scoops}</th>
+                <th className="border border-slate-300 px-2 py-1 text-start">{t.water}</th>
+                <th className="border border-slate-300 px-2 py-1 text-start">{t.perFeedAmount}</th>
+                {showEffectNutrients
+                  ? standardEffectNutrients.map((nutrient) => (
+                    <th key={`plan-header-${role}-${nutrient}`} className="border border-slate-300 px-2 py-1 text-start">
+                      {nutrientLabel(nutrient)}
+                    </th>
+                  ))
+                  : null}
+              </tr>
+            </thead>
+            <tbody>
+              {!item ? (
+                <tr>
+                  <td className="border border-slate-300 px-2 py-2 text-slate-500" colSpan={colSpan}>
+                    No selected {roleTitle.toLowerCase()} formula.
+                  </td>
+                </tr>
+              ) : (
+                <tr>
+                  <td className="border border-slate-300 px-2 py-1">{item.formulaName}</td>
+                  <td className="border border-slate-300 px-2 py-1" dir="ltr">
+                    {formatNumber(item.amount, item.amountUnit)} {item.amountUnit}
+                  </td>
+                  <td className="border border-slate-300 px-2 py-1" dir="ltr">
+                    {formatNumber(item.kcal, 'kcal/day')} kcal/day
+                  </td>
+                  <td className="border border-slate-300 px-2 py-1" dir="ltr">
+                    {formatNumber(item.protein, 'g/day')} g/day
+                  </td>
+                  <td className="border border-slate-300 px-2 py-1" dir="ltr">
+                    {typeof item.scoops === 'number' ? `${formatNumber(item.scoops, 'g/day')}` : '-'}
+                  </td>
+                  <td className="border border-slate-300 px-2 py-1" dir="ltr">
+                    {typeof item.waterMl === 'number' ? `${formatNumber(item.waterMl, 'mL/day')} mL` : '-'}
+                  </td>
+                  <td className="border border-slate-300 px-2 py-1" dir="ltr">
+                    {typeof item.perFeedAmount === 'number'
+                      ? `${formatNumber(item.perFeedAmount, item.amountUnit)} ${item.amountUnit.replace('/day', '')}`
+                      : '-'}
+                    {typeof item.perFeedScoops === 'number'
+                      ? ` | ${formatNumber(item.perFeedScoops, 'g/day')} ${t.perFeedScoops}`
+                      : ''}
+                    {typeof item.perFeedWaterMl === 'number'
+                      ? ` | ${formatNumber(item.perFeedWaterMl, 'mL/day')} mL`
+                      : ''}
+                  </td>
+                  {showEffectNutrients
+                    ? standardEffectNutrients.map((nutrient) => {
+                      const per100 = formula?.values[nutrient];
+                      const delivered =
+                        typeof per100 === 'number' ? (per100 * item.amount) / 100 : undefined;
+                      const unit = formulaValueDailyUnit(nutrient);
+
+                      return (
+                        <td key={`plan-value-${role}-${nutrient}`} className="border border-slate-300 px-2 py-1" dir="ltr">
+                          {typeof delivered === 'number'
+                            ? `${formatNumber(delivered, unit)} ${unit}`
+                            : '-'}
+                        </td>
+                      );
+                    })
+                    : null}
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     );
   };
@@ -665,9 +970,8 @@ const App: React.FC = () => {
                 <button
                   key={mode}
                   onClick={() => setTargetMode(mode)}
-                  className={`px-4 py-1.5 text-sm border-e border-slate-300 last:border-e-0 ${
-                    targetMode === mode ? 'bg-slate-900 text-white' : 'bg-white text-slate-700'
-                  }`}
+                  className={`px-4 py-1.5 text-sm border-e border-slate-300 last:border-e-0 ${targetMode === mode ? 'bg-slate-900 text-white' : 'bg-white text-slate-700'
+                    }`}
                 >
                   {mode === 'MIN' ? t.min : mode === 'MID' ? t.mid : t.max}
                 </button>
@@ -708,7 +1012,7 @@ const App: React.FC = () => {
                       <th className="border border-slate-300 px-2 py-1 text-start">{t.typeOfFormula}</th>
                       <th className="border border-slate-300 px-2 py-1 text-start">Calories</th>
                       <th className="border border-slate-300 px-2 py-1 text-start">{t.protein}</th>
-                      {standardGuideNutrients.map((nutrient) => (
+                      {standardEffectNutrients.map((nutrient) => (
                         <th key={nutrient} className="border border-slate-300 px-2 py-1 text-start">
                           {nutrientLabel(nutrient)}
                         </th>
@@ -728,7 +1032,7 @@ const App: React.FC = () => {
                           ? `${resolvedStandard.values.Protein} g`
                           : '-'}
                       </td>
-                      {standardGuideNutrients.map((nutrient) => (
+                      {standardEffectNutrients.map((nutrient) => (
                         <td key={nutrient} className="border border-slate-300 px-2 py-1" dir="ltr">
                           {typeof resolvedStandard.values[nutrient] === 'number'
                             ? `${resolvedStandard.values[nutrient]} ${formulaValueUnit(nutrient)}`
@@ -824,55 +1128,10 @@ const App: React.FC = () => {
 
         <section className="panel p-4 md:p-6">
           <h2 className="font-bold mb-3">{t.planTitle}</h2>
-          <div className="overflow-x-auto">
-            <table className="data-table w-full text-sm border border-slate-300">
-              <thead className="bg-slate-100">
-                <tr>
-                  <th className="border border-slate-300 px-2 py-1 text-start">{t.role}</th>
-                  <th className="border border-slate-300 px-2 py-1 text-start">{t.formulaName}</th>
-                  <th className="border border-slate-300 px-2 py-1 text-start">{t.amount}</th>
-                  <th className="border border-slate-300 px-2 py-1 text-start">{t.kcal}</th>
-                  <th className="border border-slate-300 px-2 py-1 text-start">{t.protein}</th>
-                  <th className="border border-slate-300 px-2 py-1 text-start">{t.scoops}</th>
-                  <th className="border border-slate-300 px-2 py-1 text-start">{t.water}</th>
-                  <th className="border border-slate-300 px-2 py-1 text-start">{t.perFeedAmount}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {results.formulaPlan.items.map((item) => (
-                  <tr key={`${item.role}-${item.formulaName}`}>
-                    <td className="border border-slate-300 px-2 py-1 font-medium">{roleLabel(item.role, t)}</td>
-                    <td className="border border-slate-300 px-2 py-1">{item.formulaName}</td>
-                    <td className="border border-slate-300 px-2 py-1" dir="ltr">
-                      {formatNumber(item.amount, item.amountUnit)} {item.amountUnit}
-                    </td>
-                    <td className="border border-slate-300 px-2 py-1" dir="ltr">
-                      {formatNumber(item.kcal, 'kcal/day')} kcal/day
-                    </td>
-                    <td className="border border-slate-300 px-2 py-1" dir="ltr">
-                      {formatNumber(item.protein, 'g/day')} g/day
-                    </td>
-                    <td className="border border-slate-300 px-2 py-1" dir="ltr">
-                      {typeof item.scoops === 'number' ? `${formatNumber(item.scoops, 'g/day')}` : '-'}
-                    </td>
-                    <td className="border border-slate-300 px-2 py-1" dir="ltr">
-                      {typeof item.waterMl === 'number' ? `${formatNumber(item.waterMl, 'mL/day')} mL` : '-'}
-                    </td>
-                    <td className="border border-slate-300 px-2 py-1" dir="ltr">
-                      {typeof item.perFeedAmount === 'number'
-                        ? `${formatNumber(item.perFeedAmount, item.amountUnit)} ${item.amountUnit.replace('/day', '')}`
-                        : '-'}
-                      {typeof item.perFeedScoops === 'number'
-                        ? ` | ${formatNumber(item.perFeedScoops, 'g/day')} ${t.perFeedScoops}`
-                        : ''}
-                      {typeof item.perFeedWaterMl === 'number'
-                        ? ` | ${formatNumber(item.perFeedWaterMl, 'mL/day')} mL`
-                        : ''}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="grid grid-cols-1 gap-3">
+            {renderRolePlanTable('standard')}
+            {renderRolePlanTable('special')}
+            {renderRolePlanTable('modular')}
           </div>
 
           <div className="mt-4">
@@ -927,47 +1186,76 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4 text-sm">
-            <div className="subcard border border-slate-300 rounded p-3 space-y-1">
-              <p className="font-semibold">{t.totalsTitle}</p>
-              <p>{t.totalKcal}: <strong dir="ltr">{formatNumber(results.formulaPlan.totals.kcal, 'kcal/day')} kcal/day</strong></p>
-              <p>{t.totalProtein}: <strong dir="ltr">{formatNumber(results.formulaPlan.totals.protein, 'g/day')} g/day</strong></p>
-              <p>{t.totalPowder}: <strong dir="ltr">{formatNumber(results.formulaPlan.totals.powderG, 'g/day')} g/day</strong></p>
-              <p>{t.totalScoops}: <strong dir="ltr">{formatNumber(results.formulaPlan.totals.scoops, 'g/day')}</strong></p>
-              <p>{t.totalWater}: <strong dir="ltr">{formatNumber(results.formulaPlan.totals.waterMl, 'mL/day')} mL/day</strong></p>
-              <p>{t.totalVolume}: <strong dir="ltr">{formatNumber(results.formulaPlan.totals.finalVolumeMl, 'mL/day')} mL/day</strong></p>
-              <p>{t.volumePerFeed}: <strong dir="ltr">{formatNumber(results.formulaPlan.totals.volumePerFeedMl, 'mL/day')} mL/feed</strong></p>
-              <p>{t.scoopsPerFeed}: <strong dir="ltr">{formatNumber(results.formulaPlan.totals.scoopsPerFeed, 'g/day')} scoops/feed</strong></p>
-              <p>{t.proteinDeficit}: <strong dir="ltr">{formatNumber(results.formulaPlan.deficits.protein, 'g/day')} g/day</strong></p>
-              <p>{t.energyDeficit}: <strong dir="ltr">{formatNumber(results.formulaPlan.deficits.energy, 'kcal/day')} kcal/day</strong></p>
-            </div>
+          <div className="mt-4">
+            <div className="order-highlight subcard border-2 border-teal-300 rounded-xl p-4 md:p-5 bg-gradient-to-br from-teal-50 via-cyan-50 to-white space-y-4">
+              <p className="text-lg md:text-2xl font-bold tracking-tight">{t.orderTitle}</p>
 
-            <div className="subcard border border-slate-300 rounded p-3 space-y-2">
-              <p className="font-semibold">{t.orderTitle}</p>
-              {results.formulaPlan.items.map((item, idx) => {
-                if (item.amount <= 0.0001) return null;
-
-                return (
-                  <p key={`${item.role}-${idx}`} className="text-sm" dir="ltr">
-                    {idx + 1}. {roleLabel(item.role, t)}: {formatNumber(item.amount, item.amountUnit)} {item.amountUnit}{' '}
-                    ({formatNumber(item.kcal, 'kcal/day')} kcal, {formatNumber(item.protein, 'g/day')} g protein)
-                    {typeof item.scoops === 'number'
-                      ? ` | ${formatNumber(item.scoops, 'g/day')} scoops/day + ${formatNumber(item.waterMl || 0, 'mL/day')} mL water/day`
-                      : ''}
-                  </p>
-                );
-              })}
-              {results.formulaPlan.notes.map((note, idx) => (
-                <p key={`note-${idx}`} className="text-xs text-amber-700">
-                  {t.orderNote}: {note}
+              <div className="order-mix-block rounded-xl border border-teal-200 bg-white/85 p-3 md:p-4">
+                <p className="text-[11px] md:text-xs uppercase tracking-[0.08em] text-teal-700 font-semibold mb-1">
+                  Final Mix
                 </p>
-              ))}
+                <p className="text-sm md:text-lg font-semibold leading-6 md:leading-8" dir="ltr">
+                  {finalOrderMix || 'No formula mix yet.'}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
+                <div className="order-meta-block rounded-lg border border-teal-200 bg-white/90 p-3">
+                  <p className="text-xs text-teal-700 font-semibold uppercase tracking-wide">Total Scoop / Day</p>
+                  <p className="text-base md:text-xl font-bold mt-1" dir="ltr">
+                    {totalScoopsPerDayOrder}
+                  </p>
+                </div>
+                <div className="order-meta-block rounded-lg border border-teal-200 bg-white/90 p-3">
+                  <p className="text-xs text-teal-700 font-semibold uppercase tracking-wide">Preparation</p>
+                  <p className="text-sm md:text-base font-semibold mt-1 leading-6" dir="ltr">
+                    {preparationInstruction || 'Add mixed powder to water as prescribed.'}
+                  </p>
+                </div>
+              </div>
+              {modularDeficitRecommendations.length > 0 ? (
+                <div className="order-meta-block rounded-lg border border-teal-200 bg-white/90 p-3">
+                  <p className="text-xs text-teal-700 font-semibold uppercase tracking-wide">
+                    Suggested Modular Adjustment (If Needed)
+                  </p>
+                  <div className="mt-1.5 space-y-1.5">
+                    {modularDeficitRecommendations.map((recommendation) => (
+                      <p
+                        key={`modular-rec-${recommendation.nutrient}`}
+                        className="text-sm md:text-base font-semibold leading-6"
+                        dir="ltr"
+                      >
+                        {recommendation.productName
+                          ? `If ${nutrientLabel(recommendation.nutrient)} deficit is ${formatNumber(
+                            recommendation.deficit,
+                            recommendation.unit,
+                          )} ${recommendation.unit}, consider =~ ${formatNumber(
+                            recommendation.grams,
+                            'g/day',
+                          )} g/day from ${cleanOrderFormulaName(recommendation.productName)}.`
+                          : `If ${nutrientLabel(recommendation.nutrient)} deficit exists, no suitable modular product is available in the current list.`}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {results.formulaPlan.notes.length > 0 ? (
+                <div className="space-y-1.5">
+                  {results.formulaPlan.notes.map((note, idx) => (
+                    <p key={`note-${idx}`} className="text-xs md:text-sm text-amber-700 font-semibold">
+                      {t.orderNote}: {note}
+                    </p>
+                  ))}
+                </div>
+              ) : null}
             </div>
           </div>
         </section>
 
         <footer className="text-center text-xs text-slate-500 space-y-1 pb-8">
-          <p>This website Developed By Yahya Alizzi</p>
+          <p>Developed and Programmed by Dt Yahya Alizzi</p>
+          <p>Reviewed by Dt Majed Garidah </p>
         </footer>
       </main>
     </div>
