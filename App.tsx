@@ -590,15 +590,29 @@ const App: React.FC = () => {
       (balance) => balance.nutrient === 'Fat',
     );
 
-    const deficits: Array<{
+    const modularDeficitCandidates = [
+      {
+        nutrient: 'Energy' as const,
+        deficit: Number(results.formulaPlan.deficits.energy || 0),
+        unit: 'kcal/day' as const,
+      },
+      {
+        nutrient: 'Carbohydrate' as const,
+        deficit: Number(carbohydrateBalance?.deficitToTarget || 0),
+        unit: 'g/day' as const,
+      },
+      {
+        nutrient: 'Fat' as const,
+        deficit: Number(fatBalance?.deficitToTarget || 0),
+        unit: 'g/day' as const,
+      },
+    ] satisfies Array<{
       nutrient: 'Energy' | 'Carbohydrate' | 'Fat';
       deficit: number;
       unit: 'kcal/day' | 'g/day';
-    }> = [
-      { nutrient: 'Energy', deficit: results.formulaPlan.deficits.energy, unit: 'kcal/day' },
-      { nutrient: 'Carbohydrate', deficit: carbohydrateBalance?.deficitToTarget || 0, unit: 'g/day' },
-      { nutrient: 'Fat', deficit: fatBalance?.deficitToTarget || 0, unit: 'g/day' },
-    ].filter((item) => item.deficit > 0.0001);
+    }>;
+
+    const deficits = modularDeficitCandidates.filter((item) => item.deficit > 0.0001);
 
     return deficits.map((item) => {
       let bestOption: (typeof modularOptions)[number] | undefined;
