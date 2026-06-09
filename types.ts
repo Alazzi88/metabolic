@@ -42,6 +42,11 @@ export interface NutrientRange {
 export interface AgeGuideline {
   ageLabel: string;
   nutrients: Record<string, NutrientRange>;
+  // Optional intact (natural) protein ceiling from the source guideline.
+  // When present, the standard formula is capped so the natural protein it
+  // delivers stays within this range, leaving the remainder for the special
+  // (medical-food) formula to complete up to the total protein target.
+  intactProtein?: NutrientRange;
 }
 
 export interface DiseaseMeta {
@@ -79,6 +84,9 @@ export interface CalculationInputs {
   scoopSizeG: number;
   waterPerScoopMl: number;
   formulas: FormulaSelection;
+  // Modular formula is only added to the plan when the user explicitly asks for it
+  // (button press). When false, the calorie gap is reported as a recommendation only.
+  includeModular?: boolean;
 }
 
 export interface CalculatedRequirement {

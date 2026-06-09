@@ -534,6 +534,7 @@ const App: React.FC = () => {
   const [showStandardSection, setShowStandardSection] = useState(true);
   const [showSpecialSection, setShowSpecialSection] = useState(false);
   const [showModularSection, setShowModularSection] = useState(false);
+  const [includeModular, setIncludeModular] = useState(false);
 
   const [selector, setSelector] = useState<FormulaSelectorState>(initialSelectorForDisease(DiseaseType.PKU));
   const [customStandard, setCustomStandard] = useState<CustomFormulaState>(defaultCustomFormula('standard'));
@@ -685,6 +686,7 @@ const App: React.FC = () => {
         special: resolvedSpecial,
         modular: resolvedModular,
       },
+      includeModular,
     }),
     [
       weightKg,
@@ -698,6 +700,7 @@ const App: React.FC = () => {
       resolvedStandard,
       resolvedSpecial,
       resolvedModular,
+      includeModular,
     ],
   );
 
@@ -1163,24 +1166,24 @@ const App: React.FC = () => {
                 <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
                   <p className="text-xs text-emerald-800 font-bold uppercase">{(t as any).targetNaturalProtein}</p>
                   <p className="text-xl font-black text-emerald-900" dir="ltr">
-                    {formatNumber(results.targetByNutrient.NaturalProtein, 'g/day')} g
+                    {!Number.isFinite(weightKg) ? '-' : `${formatNumber(results.targetByNutrient.NaturalProtein, 'g/day')} g`}
                   </p>
                   <p className="text-[10px] text-emerald-700 font-medium mt-1">From Standard Formula</p>
                 </div>
                 <div className="bg-sky-50 border border-sky-200 rounded-lg p-3">
                   <p className="text-xs text-sky-800 font-bold uppercase">{(t as any).targetEAA}</p>
                   <p className="text-xl font-black text-sky-900" dir="ltr">
-                    {formatNumber(results.targetByNutrient.EAA, 'g/day')} g
+                    {!Number.isFinite(weightKg) ? '-' : `${formatNumber(results.targetByNutrient.EAA, 'g/day')} g`}
                   </p>
                   <p className="text-[10px] text-sky-700 font-medium mt-1">From Special Formula</p>
                 </div>
                 <div className="bg-violet-50 border border-violet-200 rounded-lg p-3">
                   <p className="text-xs text-violet-800 font-bold uppercase">Total Protein</p>
                   <p className="text-xl font-black text-violet-900" dir="ltr">
-                    {formatNumber(
+                    {!Number.isFinite(weightKg) ? '-' : `${formatNumber(
                       (results.targetByNutrient.NaturalProtein || 0) + (results.targetByNutrient.EAA || 0),
                       'g/day'
-                    )} g
+                    )} g`}
                   </p>
                   <p className="text-[10px] text-violet-700 font-medium mt-1">Natural + EAA Mixture</p>
                 </div>
@@ -1386,6 +1389,35 @@ const App: React.FC = () => {
           <p className="text-sm text-slate-600 mb-3">
             {diseaseMeta.short} - {diseaseMeta.name}
           </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+            {(['Energy', 'Protein'] as const).map((key) => {
+              const row = resultRowsByNutrient[key];
+              const accent =
+                key === 'Energy'
+                  ? 'bg-amber-50 border-amber-200 text-amber-900'
+                  : 'bg-emerald-50 border-emerald-200 text-emerald-900';
+              const label = key === 'Energy' ? 'Total Calories' : 'Total Protein';
+              return (
+                <div key={key} className={`rounded-lg border p-3 ${accent}`}>
+                  <p className="text-xs font-bold uppercase tracking-wide opacity-80">{label}</p>
+                  {!Number.isFinite(weightKg) || !row ? (
+                    <p className="text-2xl font-black mt-1" dir="ltr">-</p>
+                  ) : (
+                    <>
+                      <p className="text-2xl font-black mt-1" dir="ltr">
+                        {formatNumber(row.totalTarget, row.totalUnit)} {row.totalUnit}
+                      </p>
+                      <p className="text-[11px] font-medium mt-1 opacity-80" dir="ltr">
+                        Range: {formatDailyRange(row.source, row.totalMin, row.totalMax, row.totalUnit)}
+                      </p>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
           <div className="table-scroll">
             <table className="data-table">
               <thead>
@@ -1408,10 +1440,10 @@ const App: React.FC = () => {
                       {formatSourceRange(row.source)}
                     </td>
                     <td data-label={t.dailyRange} dir="ltr">
-                      {formatDailyRange(row.source, row.totalMin, row.totalMax, row.totalUnit)}
+                      {!Number.isFinite(weightKg) ? '-' : formatDailyRange(row.source, row.totalMin, row.totalMax, row.totalUnit)}
                     </td>
                     <td data-label={t.selectedTarget} className="font-semibold" dir="ltr">
-                      {formatNumber(row.totalTarget, row.totalUnit)} {row.totalUnit}
+                      {!Number.isFinite(weightKg) ? '-' : `${formatNumber(row.totalTarget, row.totalUnit)} ${row.totalUnit}`}
                     </td>
                   </tr>
                 ))}
@@ -1454,21 +1486,21 @@ const App: React.FC = () => {
                           {nutrientLabel(balance.nutrient, t)}
                         </td>
                         <td data-label={t.dailyRange} dir="ltr">
-                          {row
+                          {!Number.isFinite(weightKg) ? '-' : (row
                             ? formatDailyRange(row.source, balance.min, balance.max, balance.unit)
-                            : `${formatNumber(balance.min, balance.unit)}-${formatNumber(balance.max, balance.unit)} ${balance.unit}`}
+                            : `${formatNumber(balance.min, balance.unit)}-${formatNumber(balance.max, balance.unit)} ${balance.unit}`)}
                         </td>
                         <td data-label={t.targetAmount} dir="ltr">
-                          {formatNumber(balance.target, balance.unit)} {balance.unit}
+                          {!Number.isFinite(weightKg) ? '-' : `${formatNumber(balance.target, balance.unit)} ${balance.unit}`}
                         </td>
                         <td data-label={t.deliveredAmount} dir="ltr">
-                          {formatNumber(balance.delivered, balance.unit)} {balance.unit}
+                          {!Number.isFinite(weightKg) ? '-' : `${formatNumber(balance.delivered, balance.unit)} ${balance.unit}`}
                         </td>
                         <td data-label={t.deficitAmount} dir="ltr">
-                          {formatNumber(balance.deficitToTarget, balance.unit)} {balance.unit}
+                          {!Number.isFinite(weightKg) ? '-' : `${formatNumber(balance.deficitToTarget, balance.unit)} ${balance.unit}`}
                         </td>
                         <td data-label={t.excessAmount} dir="ltr">
-                          {formatNumber(balance.excessToTarget, balance.unit)} {balance.unit}
+                          {!Number.isFinite(weightKg) ? '-' : `${formatNumber(balance.excessToTarget, balance.unit)} ${balance.unit}`}
                         </td>
                         <td data-label={t.balanceStatus}>
                           {statusBadge(balance.status, t)}
@@ -1508,32 +1540,90 @@ const App: React.FC = () => {
                   </p>
                 </div>
               </div>
-              {modularDeficitRecommendations.length > 0 ? (
-                <div className="order-meta-block rounded-lg border border-teal-200 bg-white/90 p-3">
-                  <p className="text-xs text-teal-700 font-semibold uppercase tracking-wide">
-                    {(t as any).suggestedModular}
-                  </p>
-                  <div className="mt-1.5 space-y-1.5">
-                    {modularDeficitRecommendations.map((recommendation) => (
-                      <p
-                        key={`modular-rec-${recommendation.nutrient}`}
-                        className="text-sm md:text-base font-semibold leading-6"
-                        dir="ltr"
-                      >
-                        {recommendation.productName
-                          ? (t as any).modularRec(
-                            nutrientLabel(recommendation.nutrient, t),
-                            formatNumber(recommendation.deficit, recommendation.unit),
-                            recommendation.unit,
-                            formatNumber(recommendation.grams, 'g/day'),
-                            cleanOrderFormulaName(recommendation.productName),
-                          )
-                          : (t as any).noModularProduct(nutrientLabel(recommendation.nutrient, t))}
+              {(() => {
+                const energyDeficit = Number.isFinite(weightKg)
+                  ? Number(results.formulaPlan.deficits.energy || 0)
+                  : 0;
+                const hasDeficit = energyDeficit > 0.5;
+
+                return (
+                  <div className="order-meta-block rounded-lg border border-teal-200 bg-white/90 p-3 space-y-2">
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <p className="text-xs text-teal-700 font-semibold uppercase tracking-wide">
+                        Modular (Calories)
                       </p>
-                    ))}
+                      <button
+                        type="button"
+                        onClick={() => setIncludeModular((prev) => !prev)}
+                        className={`text-xs font-bold rounded-full px-4 py-1.5 border transition-colors ${
+                          includeModular
+                            ? 'bg-teal-600 text-white border-teal-600 hover:bg-teal-700'
+                            : 'bg-white text-teal-700 border-teal-300 hover:bg-teal-50'
+                        }`}
+                      >
+                        {includeModular ? '✓ Modular added — click to remove' : 'Calculate modular calories'}
+                      </button>
+                    </div>
+
+                    {!includeModular && hasDeficit ? (
+                      <div className="space-y-1.5">
+                        <p className="text-sm md:text-base font-semibold leading-6 text-amber-700" dir="ltr">
+                          ⚠️ Calorie deficit of {formatNumber(energyDeficit, 'kcal/day')} kcal/day. Protein target is met —
+                          recommend adding modular calories. Press the button to calculate.
+                        </p>
+                        {modularDeficitRecommendations
+                          .filter((rec) => rec.nutrient === 'Energy' && rec.productName)
+                          .map((rec) => (
+                            <p
+                              key={`modular-rec-${rec.nutrient}`}
+                              className="text-sm md:text-base font-semibold leading-6 text-slate-700"
+                              dir="ltr"
+                            >
+                              {(t as any).modularRec(
+                                nutrientLabel(rec.nutrient, t),
+                                formatNumber(rec.deficit, rec.unit),
+                                rec.unit,
+                                formatNumber(rec.grams, 'g/day'),
+                                cleanOrderFormulaName(rec.productName),
+                              )}
+                            </p>
+                          ))}
+                      </div>
+                    ) : null}
+
+                    {!includeModular && !hasDeficit && Number.isFinite(weightKg) ? (
+                      <p className="text-sm font-medium text-emerald-700" dir="ltr">
+                        ✓ No calorie deficit — modular not needed.
+                      </p>
+                    ) : null}
+
+                    {includeModular && Number.isFinite(weightKg) ? (
+                      (() => {
+                        const modularItem = planItemByRole.modular;
+                        if (!modularItem || modularItem.amount <= 0.0001) {
+                          return (
+                            <p className="text-sm font-medium text-amber-700" dir="ltr">
+                              No modular formula selected, or no calorie gap to cover.
+                            </p>
+                          );
+                        }
+                        return (
+                          <p className="text-sm md:text-base font-semibold leading-6 text-emerald-700" dir="ltr">
+                            ✓ Added {formatNumber(modularItem.amount, modularItem.amountUnit)}{' '}
+                            {orderAmountUnit(modularItem.amountUnit)}
+                            {typeof modularItem.scoops === 'number'
+                              ? ` (${formatScoopCount(modularItem.scoops)})`
+                              : ''}{' '}
+                            from {cleanOrderFormulaName(modularItem.formulaName)} →{' '}
+                            +{formatNumber(modularItem.kcal, 'kcal/day')} kcal/day. Calorie target met. Scoops are
+                            included in the Final Mix above.
+                          </p>
+                        );
+                      })()
+                    ) : null}
                   </div>
-                </div>
-              ) : null}
+                );
+              })()}
 
               {results.formulaPlan.notes.length > 0 ? (
                 <div className="space-y-1.5">

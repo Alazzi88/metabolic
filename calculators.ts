@@ -14,7 +14,7 @@ import { DiseaseType } from './types';
 type DailyUnit = 'mg/day' | 'g/day' | 'kcal/day' | 'mL/day' | '%energy';
 type CompletionNutrient = 'Protein' | 'Energy' | 'Carbohydrate' | 'Fat';
 const EPSILON = 1e-6;
-const STANDARD_NEAR_MAX_FACTOR = 0.95;
+const STANDARD_NEAR_MAX_FACTOR = 1.00;
 const NON_AMINO_NUTRIENTS = new Set([
   'Energy',
   'Protein',
@@ -286,6 +286,8 @@ export function calculateDiet(inputs: CalculationInputs): CalculationOutputs {
   const targetCarbohydrate = targetByNutrient.Carbohydrate;
   const targetFat = targetByNutrient.Fat;
 
+  const includeModular = inputs.includeModular === true;
+
   const planNotes: string[] = [];
   const planItems: FormulaContribution[] = [];
 
@@ -312,8 +314,6 @@ export function calculateDiet(inputs: CalculationInputs): CalculationOutputs {
     label: string;
   }> = [
     { nutrient: 'Energy', target: targetEnergy, label: 'calories' },
-    { nutrient: 'Carbohydrate', target: targetCarbohydrate, label: 'carbohydrate' },
-    { nutrient: 'Fat', target: targetFat, label: 'fat' },
   ];
 
   let standardAmount = 0;
@@ -384,7 +384,7 @@ export function calculateDiet(inputs: CalculationInputs): CalculationOutputs {
   if (!isUcd && limitingNutrientForStandard) {
     if (specialFormula) {
       planNotes.push(
-        `${limitingNutrientForStandard} reached near upper safe level from standard formula (${Math.round(
+        `${limitingNutrientForStandard} reached safe level from standard formula (${Math.round(
           STANDARD_NEAR_MAX_FACTOR * 100,
         )}% of max). Special formula will complete remaining protein.`,
       );
@@ -453,34 +453,44 @@ export function calculateDiet(inputs: CalculationInputs): CalculationOutputs {
   }
 
   let modularAmount = 0;
-  if (modularFormula) {
-    modularAmount = requiredAmountForFormulaCompletion({
-      formula: modularFormula,
-      formulaLabel: 'Modular formula',
-      completionTargets: modularCompletionTargets,
-      planItems,
-      formulaByRole,
-      planNotes,
-    });
+  // Modular is used ONLY when (a) the user pressed the button to include it, AND
+  // (b) protein already reached its target but calories are still short.
+  const proteinDeliveredFromStandardAndSpecial = planItems.reduce((sum, item) => sum + item.protein, 0);
+  const proteinStillNeeded = Math.max(0, (targetProtein || 0) - proteinDeliveredFromStandardAndSpecial);
 
-    const modularItem = makeContribution({
-      role: 'modular',
-      formula: modularFormula,
-      amount: modularAmount,
-      feedsPerDay: safeFeeds,
-      scoopSizeG: safeScoopSizeG,
-      waterPerScoopMl: safeWaterPerScoopMl,
-      primaryLimiter,
-    });
-    planItems.push(modularItem);
+  if (modularFormula && includeModular) {
+    if (proteinStillNeeded > EPSILON) {
+      planNotes.push('Modular formula not used: protein target not yet reached from standard and special formulas.');
+    } else {
+      modularAmount = requiredAmountForFormulaCompletion({
+        formula: modularFormula,
+        formulaLabel: 'Modular formula',
+        completionTargets: modularCompletionTargets,
+        planItems,
+        formulaByRole,
+        planNotes,
+      });
+
+      const modularItem = makeContribution({
+        role: 'modular',
+        formula: modularFormula,
+        amount: modularAmount,
+        feedsPerDay: safeFeeds,
+        scoopSizeG: safeScoopSizeG,
+        waterPerScoopMl: safeWaterPerScoopMl,
+        primaryLimiter,
+      });
+      planItems.push(modularItem);
+    }
   } else if (
+    proteinStillNeeded <= EPSILON &&
     hasRemainingCompletionDeficit({
       completionTargets: modularCompletionTargets,
       planItems,
       formulaByRole,
     })
   ) {
-    planNotes.push('No modular formula selected while deficits exist.');
+    planNotes.push('Calorie deficit remains — add a modular formula to cover the remaining energy.');
   }
 
   const totalKcal = planItems.reduce((sum, item) => sum + item.kcal, 0);
