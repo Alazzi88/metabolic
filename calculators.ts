@@ -455,8 +455,12 @@ export function calculateDiet(inputs: CalculationInputs): CalculationOutputs {
   let modularAmount = 0;
   // Modular is used ONLY when (a) the user pressed the button to include it, AND
   // (b) protein already reached its target but calories are still short.
+  // For UCD, protein is governed by the NaturalProtein + EAA targets (already
+  // sized exactly above), so it is always considered met for the modular gate.
   const proteinDeliveredFromStandardAndSpecial = planItems.reduce((sum, item) => sum + item.protein, 0);
-  const proteinStillNeeded = Math.max(0, (targetProtein || 0) - proteinDeliveredFromStandardAndSpecial);
+  const proteinStillNeeded = isUcd
+    ? 0
+    : Math.max(0, (targetProtein || 0) - proteinDeliveredFromStandardAndSpecial);
 
   if (modularFormula && includeModular) {
     if (proteinStillNeeded > EPSILON) {

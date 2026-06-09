@@ -635,6 +635,18 @@ const App: React.FC = () => {
     return FORMULA_OPTION_BY_ID[selector.modular] || null;
   }, [selector.modular, customModular, customDiseaseNutrients]);
 
+  // Modular formula used by the plan: the explicitly selected one, or — when the
+  // user turns the modular toggle on without picking one — the highest-energy
+  // modular product available for this disease (so the button "just works").
+  const modularForPlan = useMemo(() => {
+    if (resolvedModular) return resolvedModular;
+    const best = modularOptions.reduce<typeof modularOptions[number] | null>((acc, opt) => {
+      const energy = opt.values.Energy || 0;
+      return energy > (acc?.values.Energy || 0) ? opt : acc;
+    }, null);
+    return best || FORMULA_OPTION_BY_ID['CAL_POWDER_100G'] || null;
+  }, [resolvedModular, modularOptions]);
+
   const standardGuideNutrients = useMemo(() => {
     const diseaseNutrients = new Set<string>();
 
@@ -666,9 +678,9 @@ const App: React.FC = () => {
     () => ({
       standard: resolvedStandard,
       special: resolvedSpecial,
-      modular: resolvedModular,
+      modular: includeModular ? modularForPlan : resolvedModular,
     }),
-    [resolvedStandard, resolvedSpecial, resolvedModular],
+    [resolvedStandard, resolvedSpecial, resolvedModular, modularForPlan, includeModular],
   );
 
   const calcInputs: CalculationInputs = useMemo(
@@ -684,7 +696,7 @@ const App: React.FC = () => {
       formulas: {
         standard: resolvedStandard,
         special: resolvedSpecial,
-        modular: resolvedModular,
+        modular: includeModular ? modularForPlan : resolvedModular,
       },
       includeModular,
     }),
@@ -700,6 +712,7 @@ const App: React.FC = () => {
       resolvedStandard,
       resolvedSpecial,
       resolvedModular,
+      modularForPlan,
       includeModular,
     ],
   );
@@ -1561,7 +1574,7 @@ const App: React.FC = () => {
                             : 'bg-white text-teal-700 border-teal-300 hover:bg-teal-50'
                         }`}
                       >
-                        {includeModular ? '✓ Modular added — click to remove' : 'Calculate modular calories'}
+                        {includeModular ? '✓ Modular ON — click to turn off' : '+ Turn on modular calories'}
                       </button>
                     </div>
 
