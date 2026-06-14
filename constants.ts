@@ -2417,3 +2417,12 @@ export const DISEASE_ANALYSIS_NUTRIENTS: Record<DiseaseType, string[]> = {
   [DiseaseType.GALACTOSEMIA]: ['Protein'],
   [DiseaseType.UCD]: ['Protein'],
 };
+
+/**
+ * For diseases listed here, the Standard formula is sized by ONE specific amino acid only,
+ * rather than whichever is most restrictive across all amino acids.
+ * MMA/PA → MET: clinician drives Standard by methionine (the lowest-tolerance amino).
+ */
+export const STANDARD_LIMITER_BY_DISEASE: Partial<Record<DiseaseType, string>> = {
+  [DiseaseType.MMA_PA]: 'MET',
+};

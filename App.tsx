@@ -1638,15 +1638,6 @@ const App: React.FC = () => {
                 );
               })()}
 
-              {results.formulaPlan.notes.length > 0 ? (
-                <div className="space-y-1.5">
-                  {results.formulaPlan.notes.map((note, idx) => (
-                    <p key={`note-${idx}`} className="text-xs md:text-sm text-amber-700 font-semibold">
-                      {t.orderNote}: {note}
-                    </p>
-                  ))}
-                </div>
-              ) : null}
             </div>
           </div>
         </section>

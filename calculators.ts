@@ -319,6 +319,9 @@ export function calculateDiet(inputs: CalculationInputs): CalculationOutputs {
   let standardAmount = 0;
   let limitingNutrientForStandard: string | null = null;
 
+  // Don't generate notes when weight is zero — nothing is calculated yet
+  const shouldGenerateNotes = safeWeight > 0;
+
   if (isUcd) {
     // UCD Step 1: Standard formula → Natural Protein up to selected target (respects MIN/MID/MAX mode)
     const standardProteinPer100 = standardFormula.values.Protein || 0;
@@ -341,30 +344,60 @@ export function calculateDiet(inputs: CalculationInputs): CalculationOutputs {
       planNotes.push('UCD: Standard formula has zero protein — cannot deliver Natural Protein.');
     }
   } else {
-    let maxStandardFromElements = Number.POSITIVE_INFINITY;
+    // All non-UCD diseases:
+    // Standard is sized so that ALL restricted amino acids stay within their mode target (MIN/MID/MAX).
+    // Take the minimum across all amino acids — whichever hits its mode target first limits Standard.
+    // This means MIN/MID/MAX toggle directly scales Standard up or down.
+    // Special always completes the remaining protein gap.
+    let minStandardFromAminos = Number.POSITIVE_INFINITY;
 
     rows.forEach((row) => {
       if (!isAminoAcidNutrient(row.nutrient) || row.source.minOnly) return;
+      const stdPer100 = formulaNutrient(standardFormula, row.nutrient);
+      if (typeof stdPer100 !== 'number' || stdPer100 <= EPSILON) return;
 
-      const standardElementPer100 = formulaNutrient(standardFormula, row.nutrient);
-      if (typeof standardElementPer100 !== 'number' || standardElementPer100 <= EPSILON) return;
-
-      const nearUpperLimit = row.totalMax * STANDARD_NEAR_MAX_FACTOR;
-      const maxAmountForThisElement = (nearUpperLimit * 100) / standardElementPer100;
-      if (maxAmountForThisElement < maxStandardFromElements) {
-        maxStandardFromElements = maxAmountForThisElement;
+      const amtForThisAmino = (row.totalTarget * 100) / stdPer100;
+      if (amtForThisAmino < minStandardFromAminos) {
+        minStandardFromAminos = amtForThisAmino;
         limitingNutrientForStandard = row.nutrient;
       }
     });
 
-    if (Number.isFinite(maxStandardFromElements)) {
-      standardAmount = Math.max(0, maxStandardFromElements);
+    if (Number.isFinite(minStandardFromAminos)) {
+      standardAmount = Math.max(0, minStandardFromAminos);
+
+      const stdProteinPer100 = standardFormula.values.Protein || 0;
+      const stdProteinDelivered = (stdProteinPer100 * standardAmount) / 100;
+
+      const aminoSummary = rows
+        .filter((row) => isAminoAcidNutrient(row.nutrient) && !row.source.minOnly)
+        .map((row) => {
+          const stdPer100 = formulaNutrient(standardFormula, row.nutrient);
+          if (typeof stdPer100 !== 'number' || stdPer100 <= EPSILON) return null;
+          const delivered = (stdPer100 * standardAmount) / 100;
+          const marker = row.nutrient === limitingNutrientForStandard ? ' ← limiting' : '';
+          return `${row.nutrient}: target ${row.totalTarget.toFixed(1)} ${row.totalUnit}, delivered ${delivered.toFixed(1)}${marker}`;
+        })
+        .filter(Boolean)
+        .join(' | ');
+
+      if (shouldGenerateNotes) {
+        planNotes.push(
+          `Step 1 — Standard sized by mode (${inputs.targetMode}): limiting amino = ${limitingNutrientForStandard} → ${standardAmount.toFixed(1)} g powder.`,
+        );
+        if (aminoSummary) planNotes.push(`Step 2 — Amino check: ${aminoSummary}.`);
+        planNotes.push(`Step 3 — Protein from Standard: ${stdProteinDelivered.toFixed(1)} g.`);
+        planNotes.push(
+          `Step 4 — Protein deficit = ${Math.max(0, (targetProtein || 0) - stdProteinDelivered).toFixed(1)} g → completed by Special formula.`,
+        );
+      }
     } else {
+      // No restricted amino acids in this disease (e.g. Galactosemia, GA-II, LPI) —
+      // size Standard by protein target directly.
       const standardProteinPer100 = standardFormula.values.Protein || 0;
       if ((targetProtein || 0) > 0 && standardProteinPer100 > 0) {
         standardAmount = ((targetProtein || 0) * 100) / standardProteinPer100;
-        planNotes.push('No elemental upper limit found, so standard amount is set by protein target.');
-      } else if ((targetProtein || 0) > 0) {
+      } else if ((targetProtein || 0) > 0 && shouldGenerateNotes) {
         planNotes.push('Standard formula has zero protein, so protein deficit remains.');
       }
     }
@@ -381,19 +414,7 @@ export function calculateDiet(inputs: CalculationInputs): CalculationOutputs {
   });
   planItems.push(standardItem);
 
-  if (!isUcd && limitingNutrientForStandard) {
-    if (specialFormula) {
-      planNotes.push(
-        `${limitingNutrientForStandard} reached safe level from standard formula (${Math.round(
-          STANDARD_NEAR_MAX_FACTOR * 100,
-        )}% of max). Special formula will complete remaining protein.`,
-      );
-    } else {
-      planNotes.push(
-        `${limitingNutrientForStandard} reached its highest allowed level from standard formula, but no special formula is selected.`,
-      );
-    }
-  }
+  // Note already pushed inside the Standard sizing block above for non-UCD diseases.
 
   let specialAmount = 0;
   if (specialFormula) {
@@ -409,7 +430,6 @@ export function calculateDiet(inputs: CalculationInputs): CalculationOutputs {
         ? toDailyValue(eaaSource.max, eaaSource.unit, safeWeight)
         : 0;
 
-      // Cap at guideline max so we never exceed the EAA range
       const eaaNeeded = Math.min(eaaTarget, eaaMax);
 
       specialAmount = specialProteinPer100 > EPSILON && eaaNeeded > EPSILON
@@ -420,14 +440,29 @@ export function calculateDiet(inputs: CalculationInputs): CalculationOutputs {
         planNotes.push('UCD: EAA target is 0 — no special formula needed for protein.');
       }
     } else {
-      specialAmount = requiredAmountForFormulaCompletion({
-        formula: specialFormula,
-        formulaLabel: 'Special formula',
-        completionTargets: specialCompletionTargets,
-        planItems,
-        formulaByRole,
-        planNotes,
-      });
+      // All non-UCD diseases: Special completes protein to the mode target.
+      // Amino-acid control is already handled by Standard (sized to mode target for each amino).
+      const specialProteinPer100 = specialFormula.values.Protein || 0;
+      const stdProteinDelivered = planItems.reduce((sum, i) => sum + i.protein, 0);
+      const proteinRoom = Math.max(0, (targetByNutrient.Protein ?? 0) - stdProteinDelivered);
+
+      specialAmount = specialProteinPer100 > EPSILON && proteinRoom > EPSILON
+        ? (proteinRoom * 100) / specialProteinPer100
+        : 0;
+
+      const specProteinActual = (specialProteinPer100 * specialAmount) / 100;
+      const totalProteinAfterSpecial = stdProteinDelivered + specProteinActual;
+
+      if (shouldGenerateNotes) {
+        if (proteinRoom < EPSILON) {
+          planNotes.push('Step 5 — Standard alone meets protein target — no Special needed.');
+        } else {
+          planNotes.push(
+            `Step 5 — Special formula: ${specialAmount.toFixed(1)} g powder → ${specProteinActual.toFixed(1)} g protein.` +
+            ` Total protein: ${totalProteinAfterSpecial.toFixed(1)} g (target ${(targetByNutrient.Protein ?? 0).toFixed(1)} g).`,
+          );
+        }
+      }
     }
 
     const specialItem = makeContribution({
@@ -486,15 +521,6 @@ export function calculateDiet(inputs: CalculationInputs): CalculationOutputs {
       });
       planItems.push(modularItem);
     }
-  } else if (
-    proteinStillNeeded <= EPSILON &&
-    hasRemainingCompletionDeficit({
-      completionTargets: modularCompletionTargets,
-      planItems,
-      formulaByRole,
-    })
-  ) {
-    planNotes.push('Calorie deficit remains — add a modular formula to cover the remaining energy.');
   }
 
   const totalKcal = planItems.reduce((sum, item) => sum + item.kcal, 0);
