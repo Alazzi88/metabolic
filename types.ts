@@ -87,6 +87,11 @@ export interface CalculationInputs {
   // Modular formula is only added to the plan when the user explicitly asks for it
   // (button press). When false, the calorie gap is reported as a recommendation only.
   includeModular?: boolean;
+  // Optional manual overrides for the daily energy/protein targets. When a finite
+  // value is supplied the calculator uses it in place of the guideline-derived
+  // target, so the whole plan (special/modular sizing, coverage) follows it.
+  overrideEnergy?: number;
+  overrideProtein?: number;
 }
 
 export interface CalculatedRequirement {

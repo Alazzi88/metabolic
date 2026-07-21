@@ -324,6 +324,10 @@ function roleOptions(role: FormulaRole, disease: DiseaseType, ageGroup: FormulaA
     return option.diseases.includes(disease);
   });
 
+  // Special formulas stay unfiltered: an under-1-year milk is sometimes the
+  // right choice for an older child, so the clinician picks from the full list.
+  if (role === 'special') return filtered;
+
   const hasInfantVersion = filtered.some((option) => option.ageGroup === 'INFANT');
   const hasChildVersion = filtered.some((option) => option.ageGroup === 'CHILD');
 
@@ -535,6 +539,8 @@ const App: React.FC = () => {
   const [showSpecialSection, setShowSpecialSection] = useState(false);
   const [showModularSection, setShowModularSection] = useState(false);
   const [includeModular, setIncludeModular] = useState(false);
+  const [customEnergyTarget, setCustomEnergyTarget] = useState<number>(Number.NaN);
+  const [customProteinTarget, setCustomProteinTarget] = useState<number>(Number.NaN);
 
   const [selector, setSelector] = useState<FormulaSelectorState>(initialSelectorForDisease(DiseaseType.PKU));
   const [customStandard, setCustomStandard] = useState<CustomFormulaState>(defaultCustomFormula('standard'));
@@ -699,6 +705,8 @@ const App: React.FC = () => {
         modular: includeModular ? modularForPlan : resolvedModular,
       },
       includeModular,
+      overrideEnergy: Number.isFinite(customEnergyTarget) ? customEnergyTarget : undefined,
+      overrideProtein: Number.isFinite(customProteinTarget) ? customProteinTarget : undefined,
     }),
     [
       weightKg,
@@ -714,6 +722,8 @@ const App: React.FC = () => {
       resolvedModular,
       modularForPlan,
       includeModular,
+      customEnergyTarget,
+      customProteinTarget,
     ],
   );
 
@@ -1411,20 +1421,55 @@ const App: React.FC = () => {
                   ? 'bg-amber-50 border-amber-200 text-amber-900'
                   : 'bg-emerald-50 border-emerald-200 text-emerald-900';
               const label = key === 'Energy' ? 'Total Calories' : 'Total Protein';
+              const overrideValue = key === 'Energy' ? customEnergyTarget : customProteinTarget;
+              const setOverride = key === 'Energy' ? setCustomEnergyTarget : setCustomProteinTarget;
+              const isOverridden = Number.isFinite(overrideValue);
+              const hasValue = Number.isFinite(weightKg) && !!row;
               return (
                 <div key={key} className={`rounded-lg border p-3 ${accent}`}>
                   <p className="text-xs font-bold uppercase tracking-wide opacity-80">{label}</p>
-                  {!Number.isFinite(weightKg) || !row ? (
+                  {!hasValue && !isOverridden ? (
                     <p className="text-2xl font-black mt-1" dir="ltr">-</p>
                   ) : (
                     <>
                       <p className="text-2xl font-black mt-1" dir="ltr">
-                        {formatNumber(row.totalTarget, row.totalUnit)} {row.totalUnit}
+                        {formatNumber(
+                          isOverridden ? overrideValue : row!.totalTarget,
+                          key === 'Energy' ? 'kcal/day' : 'g/day',
+                        )}{' '}
+                        {key === 'Energy' ? 'kcal/day' : 'g/day'}
                       </p>
-                      <p className="text-[11px] font-medium mt-1 opacity-80" dir="ltr">
-                        Range: {formatDailyRange(row.source, row.totalMin, row.totalMax, row.totalUnit)}
-                      </p>
+                      {hasValue && (
+                        <p className="text-[11px] font-medium mt-1 opacity-80" dir="ltr">
+                          Range: {formatDailyRange(row!.source, row!.totalMin, row!.totalMax, row!.totalUnit)}
+                        </p>
+                      )}
                     </>
+                  )}
+                  <div className="mt-2 flex items-center gap-2">
+                    <input
+                      type="number"
+                      step={key === 'Energy' ? '1' : '0.1'}
+                      min="0"
+                      value={numberInputValue(overrideValue)}
+                      onChange={(e) => setOverride(parseFloatOrNaN(e.target.value))}
+                      placeholder={`Enter ${key === 'Energy' ? 'kcal/day' : 'g/day'} manually`}
+                      className="w-full border border-slate-300 rounded px-2 py-1 text-sm text-slate-900 bg-white/90"
+                    />
+                    {isOverridden && (
+                      <button
+                        type="button"
+                        onClick={() => setOverride(Number.NaN)}
+                        className="text-[11px] font-bold text-slate-500 hover:text-slate-800 underline whitespace-nowrap"
+                      >
+                        auto
+                      </button>
+                    )}
+                  </div>
+                  {isOverridden && (
+                    <p className="text-[10px] font-semibold mt-1 opacity-70" dir="ltr">
+                      Manual override active
+                    </p>
                   )}
                 </div>
               );
@@ -1644,7 +1689,7 @@ const App: React.FC = () => {
 
         <footer className="text-center text-xs text-slate-500 space-y-1 pb-8">
           <p>Developed by Yahya Alizzi</p>
-          <p>Reviewed by Wedyan AlGamdi &amp; Maged Gardah</p>
+          <p>Reviewed by Maged Gardah &amp; Osama Hakami</p>
           <p className="text-[10px] text-slate-400 mt-1">
             Reference: <em>Nutrition Management of Inherited Metabolic Diseases, 2nd Edition</em> (Springer 2022)
             — Bernstein, Rohr &amp; van Calcar

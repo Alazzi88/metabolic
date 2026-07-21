@@ -270,6 +270,18 @@ export function calculateDiet(inputs: CalculationInputs): CalculationOutputs {
     unitByNutrient[row.nutrient] = row.totalUnit;
   });
 
+  // Manual overrides: when the user types their own daily energy/protein target,
+  // it replaces the guideline-derived value everywhere (display + plan sizing).
+  // The guideline min/max range is kept so coverage status stays meaningful.
+  const applyOverride = (nutrient: 'Energy' | 'Protein', value?: number) => {
+    if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) return;
+    targetByNutrient[nutrient] = value;
+    const row = rows.find((entry) => entry.nutrient === nutrient);
+    if (row) row.totalTarget = value;
+  };
+  applyOverride('Energy', inputs.overrideEnergy);
+  applyOverride('Protein', inputs.overrideProtein);
+
   const primaryLimiter = DISEASE_METADATA[inputs.disease].primaryLimiter;
   const primaryLimitValue =
     primaryLimiter && primaryLimiter.length > 0
