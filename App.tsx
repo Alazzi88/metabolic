@@ -541,6 +541,8 @@ const App: React.FC = () => {
   const [includeModular, setIncludeModular] = useState(false);
   const [customEnergyTarget, setCustomEnergyTarget] = useState<number>(Number.NaN);
   const [customProteinTarget, setCustomProteinTarget] = useState<number>(Number.NaN);
+  const [customNaturalProteinTarget, setCustomNaturalProteinTarget] = useState<number>(Number.NaN);
+  const [customEAATarget, setCustomEAATarget] = useState<number>(Number.NaN);
 
   const [selector, setSelector] = useState<FormulaSelectorState>(initialSelectorForDisease(DiseaseType.PKU));
   const [customStandard, setCustomStandard] = useState<CustomFormulaState>(defaultCustomFormula('standard'));
@@ -707,6 +709,8 @@ const App: React.FC = () => {
       includeModular,
       overrideEnergy: Number.isFinite(customEnergyTarget) ? customEnergyTarget : undefined,
       overrideProtein: Number.isFinite(customProteinTarget) ? customProteinTarget : undefined,
+      overrideNaturalProtein: Number.isFinite(customNaturalProteinTarget) ? customNaturalProteinTarget : undefined,
+      overrideEAA: Number.isFinite(customEAATarget) ? customEAATarget : undefined,
     }),
     [
       weightKg,
@@ -724,6 +728,8 @@ const App: React.FC = () => {
       includeModular,
       customEnergyTarget,
       customProteinTarget,
+      customNaturalProteinTarget,
+      customEAATarget,
     ],
   );
 
@@ -1072,6 +1078,182 @@ const App: React.FC = () => {
     );
   };
 
+  const renderRequirementsSection = () => {
+    const requirementCardDefs: Array<{
+      key: 'Energy' | 'Protein' | 'NaturalProtein' | 'EAA';
+      label: string;
+      accent: string;
+      overrideValue: number;
+      setOverride: (value: number) => void;
+      footnote?: string;
+    }> = disease === DiseaseType.UCD
+      ? [
+          {
+            key: 'Energy',
+            label: 'Total Calories',
+            accent: 'bg-amber-50 border-amber-200 text-amber-900',
+            overrideValue: customEnergyTarget,
+            setOverride: setCustomEnergyTarget,
+          },
+          {
+            key: 'NaturalProtein',
+            label: t.nutrients.NaturalProtein,
+            accent: 'bg-emerald-50 border-emerald-200 text-emerald-900',
+            overrideValue: customNaturalProteinTarget,
+            setOverride: setCustomNaturalProteinTarget,
+            footnote: 'From Standard Formula',
+          },
+          {
+            key: 'EAA',
+            label: t.nutrients.EAA,
+            accent: 'bg-sky-50 border-sky-200 text-sky-900',
+            overrideValue: customEAATarget,
+            setOverride: setCustomEAATarget,
+            footnote: 'From Special Formula',
+          },
+        ]
+      : [
+          {
+            key: 'Energy',
+            label: 'Total Calories',
+            accent: 'bg-amber-50 border-amber-200 text-amber-900',
+            overrideValue: customEnergyTarget,
+            setOverride: setCustomEnergyTarget,
+          },
+          {
+            key: 'Protein',
+            label: 'Total Protein',
+            accent: 'bg-emerald-50 border-emerald-200 text-emerald-900',
+            overrideValue: customProteinTarget,
+            setOverride: setCustomProteinTarget,
+          },
+        ];
+
+    return (
+      <section className="panel p-4 md:p-6">
+        <h2 className="font-bold mb-3">{t.requirementsTitle}</h2>
+        <p className="text-sm text-slate-600 mb-3">
+          {diseaseMeta.short} - {diseaseMeta.name}
+        </p>
+
+        <div
+          className={`grid grid-cols-1 gap-3 mb-4 ${disease === DiseaseType.UCD ? 'md:grid-cols-3' : 'md:grid-cols-2'
+            }`}
+        >
+          {requirementCardDefs.map(({ key, label, accent, overrideValue, setOverride, footnote }) => {
+            const row = resultRowsByNutrient[key];
+            const unit = key === 'Energy' ? 'kcal/day' : 'g/day';
+            const isOverridden = Number.isFinite(overrideValue);
+            const hasValue = Number.isFinite(weightKg) && !!row;
+            return (
+              <div key={key} className={`rounded-lg border p-3 ${accent}`}>
+                <p className="text-xs font-bold uppercase tracking-wide opacity-80">{label}</p>
+                {!hasValue && !isOverridden ? (
+                  <p className="text-2xl font-black mt-1" dir="ltr">-</p>
+                ) : (
+                  <>
+                    <p className="text-2xl font-black mt-1" dir="ltr">
+                      {formatNumber(isOverridden ? overrideValue : row!.totalTarget, unit)} {unit}
+                    </p>
+                    {hasValue && (
+                      <p className="text-[11px] font-medium mt-1 opacity-80" dir="ltr">
+                        Range: {formatDailyRange(row!.source, row!.totalMin, row!.totalMax, row!.totalUnit)}
+                      </p>
+                    )}
+                  </>
+                )}
+                {footnote && <p className="text-[10px] font-medium mt-1 opacity-70">{footnote}</p>}
+                <div className="mt-2 flex items-center gap-2">
+                  <input
+                    type="number"
+                    step={key === 'Energy' ? '1' : '0.1'}
+                    min="0"
+                    value={numberInputValue(overrideValue)}
+                    onChange={(e) => setOverride(parseFloatOrNaN(e.target.value))}
+                    placeholder={`Enter ${unit} manually`}
+                    className="w-full border border-slate-300 rounded px-2 py-1 text-sm text-slate-900 bg-white/90"
+                  />
+                  {isOverridden && (
+                    <button
+                      type="button"
+                      onClick={() => setOverride(Number.NaN)}
+                      className="text-[11px] font-bold text-slate-500 hover:text-slate-800 underline whitespace-nowrap"
+                    >
+                      auto
+                    </button>
+                  )}
+                </div>
+                {isOverridden && (
+                  <p className="text-[10px] font-semibold mt-1 opacity-70" dir="ltr">
+                    Manual override active
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {disease === DiseaseType.UCD && (
+          <div className="space-y-3 mb-4">
+            <div className="bg-violet-50 border border-violet-200 rounded-lg p-3">
+              <p className="text-xs text-violet-800 font-bold uppercase">Total Protein</p>
+              <p className="text-xl font-black text-violet-900" dir="ltr">
+                {formatNumber(
+                  (results.targetByNutrient.NaturalProtein || 0) + (results.targetByNutrient.EAA || 0),
+                  'g/day',
+                )}{' '}
+                g
+              </p>
+              <p className="text-[10px] text-violet-700 font-medium mt-1">Natural + EAA Mixture</p>
+            </div>
+
+            <button
+              onClick={() => setShowUcdReference(!showUcdReference)}
+              className="text-xs font-bold text-teal-700 bg-teal-50 border border-teal-200 rounded-full px-4 py-1.5 hover:bg-teal-100 transition-colors flex items-center gap-2"
+            >
+              <span>{showUcdReference ? t.hideUcdRef : t.showUcdRef}</span>
+              <span>{showUcdReference ? '▲' : '▼'}</span>
+            </button>
+            {showUcdReference && <UcdGuidelineReference />}
+          </div>
+        )}
+
+        <div className="table-scroll">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th className="text-start">{t.nutrient}</th>
+                <th className="text-start">{t.sourceRange}</th>
+                <th className="text-start">{t.dailyRange}</th>
+                <th className="text-start">{t.selectedTarget}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {results.rows
+                .filter((row) => !(disease === DiseaseType.UCD && row.nutrient === 'Protein'))
+                .map((row) => (
+                <tr key={row.nutrient}>
+                  <td data-label="" className="row-header font-medium">
+                    {nutrientLabel(row.nutrient, t)}
+                  </td>
+                  <td data-label={t.sourceRange} dir="ltr">
+                    {formatSourceRange(row.source)}
+                  </td>
+                  <td data-label={t.dailyRange} dir="ltr">
+                    {!Number.isFinite(weightKg) ? '-' : formatDailyRange(row.source, row.totalMin, row.totalMax, row.totalUnit)}
+                  </td>
+                  <td data-label={t.selectedTarget} className="font-semibold" dir="ltr">
+                    {!Number.isFinite(weightKg) ? '-' : `${formatNumber(row.totalTarget, row.totalUnit)} ${row.totalUnit}`}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    );
+  };
+
   return (
     <div className="app-shell min-h-screen text-slate-900 font-sans">
       <main className="app-main max-w-7xl mx-auto px-4 py-6 md:py-10 space-y-6">
@@ -1183,46 +1365,6 @@ const App: React.FC = () => {
             </label>
           </div>
 
-          {disease === DiseaseType.UCD && (
-            <div className="space-y-4 mt-4">
-              <div className="ucd-highlights grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
-                  <p className="text-xs text-emerald-800 font-bold uppercase">{(t as any).targetNaturalProtein}</p>
-                  <p className="text-xl font-black text-emerald-900" dir="ltr">
-                    {!Number.isFinite(weightKg) ? '-' : `${formatNumber(results.targetByNutrient.NaturalProtein, 'g/day')} g`}
-                  </p>
-                  <p className="text-[10px] text-emerald-700 font-medium mt-1">From Standard Formula</p>
-                </div>
-                <div className="bg-sky-50 border border-sky-200 rounded-lg p-3">
-                  <p className="text-xs text-sky-800 font-bold uppercase">{(t as any).targetEAA}</p>
-                  <p className="text-xl font-black text-sky-900" dir="ltr">
-                    {!Number.isFinite(weightKg) ? '-' : `${formatNumber(results.targetByNutrient.EAA, 'g/day')} g`}
-                  </p>
-                  <p className="text-[10px] text-sky-700 font-medium mt-1">From Special Formula</p>
-                </div>
-                <div className="bg-violet-50 border border-violet-200 rounded-lg p-3">
-                  <p className="text-xs text-violet-800 font-bold uppercase">Total Protein</p>
-                  <p className="text-xl font-black text-violet-900" dir="ltr">
-                    {!Number.isFinite(weightKg) ? '-' : `${formatNumber(
-                      (results.targetByNutrient.NaturalProtein || 0) + (results.targetByNutrient.EAA || 0),
-                      'g/day'
-                    )} g`}
-                  </p>
-                  <p className="text-[10px] text-violet-700 font-medium mt-1">Natural + EAA Mixture</p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setShowUcdReference(!showUcdReference)}
-                className="text-xs font-bold text-teal-700 bg-teal-50 border border-teal-200 rounded-full px-4 py-1.5 hover:bg-teal-100 transition-colors flex items-center gap-2"
-              >
-                <span>{showUcdReference ? (t as any).hideUcdRef : (t as any).showUcdRef}</span>
-                <span>{showUcdReference ? '▲' : '▼'}</span>
-              </button>
-              {showUcdReference && <UcdGuidelineReference />}
-            </div>
-          )}
-
           <div className="mt-4">
             <p className="text-sm mb-2">{t.targetMode}</p>
             <div className="mode-switch inline-flex border border-slate-300 rounded overflow-hidden">
@@ -1239,6 +1381,8 @@ const App: React.FC = () => {
             </div>
           </div>
         </section>
+
+        {disease === DiseaseType.UCD && renderRequirementsSection()}
 
         <section className="panel p-4 md:p-6 space-y-4">
           <h2 className="font-bold">{t.formulaConfigTitle}</h2>
@@ -1407,108 +1551,7 @@ const App: React.FC = () => {
           </div>
         </section>
 
-        <section className="panel p-4 md:p-6">
-          <h2 className="font-bold mb-3">{t.requirementsTitle}</h2>
-          <p className="text-sm text-slate-600 mb-3">
-            {diseaseMeta.short} - {diseaseMeta.name}
-          </p>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-            {(['Energy', 'Protein'] as const).map((key) => {
-              const row = resultRowsByNutrient[key];
-              const accent =
-                key === 'Energy'
-                  ? 'bg-amber-50 border-amber-200 text-amber-900'
-                  : 'bg-emerald-50 border-emerald-200 text-emerald-900';
-              const label = key === 'Energy' ? 'Total Calories' : 'Total Protein';
-              const overrideValue = key === 'Energy' ? customEnergyTarget : customProteinTarget;
-              const setOverride = key === 'Energy' ? setCustomEnergyTarget : setCustomProteinTarget;
-              const isOverridden = Number.isFinite(overrideValue);
-              const hasValue = Number.isFinite(weightKg) && !!row;
-              return (
-                <div key={key} className={`rounded-lg border p-3 ${accent}`}>
-                  <p className="text-xs font-bold uppercase tracking-wide opacity-80">{label}</p>
-                  {!hasValue && !isOverridden ? (
-                    <p className="text-2xl font-black mt-1" dir="ltr">-</p>
-                  ) : (
-                    <>
-                      <p className="text-2xl font-black mt-1" dir="ltr">
-                        {formatNumber(
-                          isOverridden ? overrideValue : row!.totalTarget,
-                          key === 'Energy' ? 'kcal/day' : 'g/day',
-                        )}{' '}
-                        {key === 'Energy' ? 'kcal/day' : 'g/day'}
-                      </p>
-                      {hasValue && (
-                        <p className="text-[11px] font-medium mt-1 opacity-80" dir="ltr">
-                          Range: {formatDailyRange(row!.source, row!.totalMin, row!.totalMax, row!.totalUnit)}
-                        </p>
-                      )}
-                    </>
-                  )}
-                  <div className="mt-2 flex items-center gap-2">
-                    <input
-                      type="number"
-                      step={key === 'Energy' ? '1' : '0.1'}
-                      min="0"
-                      value={numberInputValue(overrideValue)}
-                      onChange={(e) => setOverride(parseFloatOrNaN(e.target.value))}
-                      placeholder={`Enter ${key === 'Energy' ? 'kcal/day' : 'g/day'} manually`}
-                      className="w-full border border-slate-300 rounded px-2 py-1 text-sm text-slate-900 bg-white/90"
-                    />
-                    {isOverridden && (
-                      <button
-                        type="button"
-                        onClick={() => setOverride(Number.NaN)}
-                        className="text-[11px] font-bold text-slate-500 hover:text-slate-800 underline whitespace-nowrap"
-                      >
-                        auto
-                      </button>
-                    )}
-                  </div>
-                  {isOverridden && (
-                    <p className="text-[10px] font-semibold mt-1 opacity-70" dir="ltr">
-                      Manual override active
-                    </p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="table-scroll">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th className="text-start">{t.nutrient}</th>
-                  <th className="text-start">{t.sourceRange}</th>
-                  <th className="text-start">{t.dailyRange}</th>
-                  <th className="text-start">{t.selectedTarget}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {results.rows
-                  .filter((row) => !(disease === DiseaseType.UCD && row.nutrient === 'Protein'))
-                  .map((row) => (
-                  <tr key={row.nutrient}>
-                    <td data-label="" className="row-header font-medium">
-                      {nutrientLabel(row.nutrient, t)}
-                    </td>
-                    <td data-label={t.sourceRange} dir="ltr">
-                      {formatSourceRange(row.source)}
-                    </td>
-                    <td data-label={t.dailyRange} dir="ltr">
-                      {!Number.isFinite(weightKg) ? '-' : formatDailyRange(row.source, row.totalMin, row.totalMax, row.totalUnit)}
-                    </td>
-                    <td data-label={t.selectedTarget} className="font-semibold" dir="ltr">
-                      {!Number.isFinite(weightKg) ? '-' : `${formatNumber(row.totalTarget, row.totalUnit)} ${row.totalUnit}`}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+        {disease !== DiseaseType.UCD && renderRequirementsSection()}
 
         <section className="panel p-4 md:p-6">
           <h2 className="font-bold mb-3">{t.planTitle}</h2>

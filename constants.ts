@@ -872,16 +872,58 @@ export const UCD_SUBTYPES: { id: UcdSubtype; label: string }[] = [
 ];
 
 /**
- * TABLE 24-1 states one set of requirements for urea cycle disorders and does
- * not split them by enzyme subtype, so every subtype resolves to that table.
+ * TABLE 24-1 states one total-protein figure for UCD with no split by enzyme
+ * subtype and no Natural Protein / EAA breakdown. That breakdown instead
+ * comes from Bernstein, Rohr & van Calcar (Nutrition Management of Inherited
+ * Metabolic Diseases, 2nd Edition, Springer 2022) — the same numbers shown in
+ * the "UCD Guideline Reference" table — grouped by enzyme (CPS/OTC, ASS/ASA,
+ * ARG) across 4 age bands (0-1, 1-7, 7-19, >19 yr). Those bands are coarser
+ * than Table 24-1's 13, so each Table 24-1 band maps into the Bernstein band
+ * it falls inside.
  */
-export const UCD_GUIDELINES_BY_SUBTYPE: Record<UcdSubtype, AgeGuideline[]> = {
-  CPS: GUIDELINES[DiseaseType.UCD],
-  OTC: GUIDELINES[DiseaseType.UCD],
-  ASS: GUIDELINES[DiseaseType.UCD],
-  ASA: GUIDELINES[DiseaseType.UCD],
-  ARG: GUIDELINES[DiseaseType.UCD],
+type UcdEnzymeGroup = 'CPS_OTC' | 'ASS_ASA' | 'ARG';
+
+const UCD_SUBTYPE_TO_BERNSTEIN_GROUP: Record<UcdSubtype, UcdEnzymeGroup> = {
+  CPS: 'CPS_OTC',
+  OTC: 'CPS_OTC',
+  ASS: 'ASS_ASA',
+  ASA: 'ASS_ASA',
+  ARG: 'ARG',
 };
+
+// Index into the 4 Bernstein bands [0-1yr, 1-7yr, 7-19yr, >19yr] for each of
+// the 13 GUIDELINE_AGE_LABELS bands, in order.
+const UCD_AGE_LABEL_TO_BERNSTEIN_BAND = [0, 0, 0, 0, 1, 1, 2, 2, 2, 3, 2, 2, 3];
+
+const UCD_BERNSTEIN_EAA_BY_GROUP: Record<UcdEnzymeGroup, NutrientRange[]> = {
+  CPS_OTC: [r(0.4, 1.1, 'g/kg'), r(0.3, 0.7, 'g/kg'), r(0.4, 0.7, 'g/kg'), r(0.2, 0.5, 'g/kg')],
+  ASS_ASA: [r(0.0, 0.5, 'g/kg'), r(0.0, 0.3, 'g/kg'), r(0.0, 0.3, 'g/kg'), r(0.0, 0.2, 'g/kg')],
+  ARG: [r(0.0, 0.5, 'g/kg'), r(0.0, 0.3, 'g/kg'), r(0.0, 0.3, 'g/kg'), r(0.0, 0.2, 'g/kg')],
+};
+
+const UCD_BERNSTEIN_NATURAL_PROTEIN_BY_GROUP: Record<UcdEnzymeGroup, NutrientRange[]> = {
+  CPS_OTC: [r(0.8, 1.1, 'g/kg'), r(0.7, 0.8, 'g/kg'), r(0.3, 1.0, 'g/kg'), r(0.6, 0.7, 'g/kg')],
+  ASS_ASA: [r(0.9, 1.7, 'g/kg'), r(0.7, 0.9, 'g/kg'), r(0.4, 1.1, 'g/kg'), r(0.3, 0.8, 'g/kg')],
+  ARG: [r(0.9, 1.7, 'g/kg'), r(0.7, 0.9, 'g/kg'), r(0.4, 1.1, 'g/kg'), r(0.3, 0.8, 'g/kg')],
+};
+
+export const UCD_GUIDELINES_BY_SUBTYPE: Record<UcdSubtype, AgeGuideline[]> = (
+  Object.keys(UCD_SUBTYPE_TO_BERNSTEIN_GROUP) as UcdSubtype[]
+).reduce((acc, subtype) => {
+  const group = UCD_SUBTYPE_TO_BERNSTEIN_GROUP[subtype];
+  acc[subtype] = GUIDELINES[DiseaseType.UCD].map((guide, index) => {
+    const bandIndex = UCD_AGE_LABEL_TO_BERNSTEIN_BAND[index];
+    return {
+      ...guide,
+      nutrients: {
+        ...guide.nutrients,
+        EAA: UCD_BERNSTEIN_EAA_BY_GROUP[group][bandIndex],
+        NaturalProtein: UCD_BERNSTEIN_NATURAL_PROTEIN_BY_GROUP[group][bandIndex],
+      },
+    };
+  });
+  return acc;
+}, {} as Record<UcdSubtype, AgeGuideline[]>);
 
 const SIMILAC_READY_TO_FEED_100ML: FormulaReference = {
   name: 'Similac With Iron Infant Formula (Ready to Feed)',

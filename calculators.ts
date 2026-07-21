@@ -270,10 +270,14 @@ export function calculateDiet(inputs: CalculationInputs): CalculationOutputs {
     unitByNutrient[row.nutrient] = row.totalUnit;
   });
 
-  // Manual overrides: when the user types their own daily energy/protein target,
-  // it replaces the guideline-derived value everywhere (display + plan sizing).
-  // The guideline min/max range is kept so coverage status stays meaningful.
-  const applyOverride = (nutrient: 'Energy' | 'Protein', value?: number) => {
+  // Manual overrides: when the user types their own daily target, it replaces
+  // the guideline-derived value everywhere (display + plan sizing). The
+  // guideline min/max range is kept so coverage status stays meaningful.
+  // For UCD, NaturalProtein/EAA follow the same auto-or-manual pattern as
+  // Energy/Protein: "auto" is the Bernstein-derived guideline range for the
+  // selected enzyme subtype (see UCD_GUIDELINES_BY_SUBTYPE), and a manual
+  // entry overrides it.
+  const applyOverride = (nutrient: string, value?: number) => {
     if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) return;
     targetByNutrient[nutrient] = value;
     const row = rows.find((entry) => entry.nutrient === nutrient);
@@ -281,6 +285,8 @@ export function calculateDiet(inputs: CalculationInputs): CalculationOutputs {
   };
   applyOverride('Energy', inputs.overrideEnergy);
   applyOverride('Protein', inputs.overrideProtein);
+  applyOverride('NaturalProtein', inputs.overrideNaturalProtein);
+  applyOverride('EAA', inputs.overrideEAA);
 
   const primaryLimiter = DISEASE_METADATA[inputs.disease].primaryLimiter;
   const primaryLimitValue =
@@ -335,23 +341,19 @@ export function calculateDiet(inputs: CalculationInputs): CalculationOutputs {
   const shouldGenerateNotes = safeWeight > 0;
 
   if (isUcd) {
-    // UCD Step 1: Standard formula → Natural Protein up to selected target (respects MIN/MID/MAX mode)
+    // UCD Step 1: Standard formula → Natural Protein, sized to the selected
+    // target (Bernstein-derived guideline for the enzyme subtype, or a
+    // manual override — see applyOverride above).
     const standardProteinPer100 = standardFormula.values.Protein || 0;
-    const naturalProteinSource = ageGuide.nutrients['NaturalProtein'];
-    const naturalProteinTarget = naturalProteinSource
-      ? toDailyValue(pickTarget(naturalProteinSource, inputs.targetMode), naturalProteinSource.unit, safeWeight)
-      : 0;
-    const naturalProteinMax = naturalProteinSource
-      ? toDailyValue(naturalProteinSource.max, naturalProteinSource.unit, safeWeight)
-      : 0;
+    const naturalProteinTarget = targetByNutrient.NaturalProtein || 0;
 
     if (standardProteinPer100 > EPSILON && naturalProteinTarget > 0) {
       standardAmount = (naturalProteinTarget * 100) / standardProteinPer100;
       planNotes.push(
-        `UCD Protocol: Standard formula delivers Natural Protein at selected target (${naturalProteinTarget.toFixed(1)} g/day, max ${naturalProteinMax.toFixed(1)} g/day).`,
+        `UCD Protocol: Standard formula delivers Natural Protein at the selected target (${naturalProteinTarget.toFixed(1)} g/day).`,
       );
-    } else if (naturalProteinMax <= 0) {
-      planNotes.push('UCD: Natural Protein MAX is 0 for this subtype/age group.');
+    } else if (naturalProteinTarget <= 0) {
+      planNotes.push('UCD: Natural Protein target is 0 for this subtype/age group.');
     } else {
       planNotes.push('UCD: Standard formula has zero protein — cannot deliver Natural Protein.');
     }
@@ -431,18 +433,10 @@ export function calculateDiet(inputs: CalculationInputs): CalculationOutputs {
   let specialAmount = 0;
   if (specialFormula) {
     if (isUcd) {
-      // UCD Step 2: Special formula is sized by EAA target only — energy gap is modular's job
+      // UCD Step 2: Special formula is sized by the selected EAA target
+      // only (auto or manual override) — energy gap is modular's job.
       const specialProteinPer100 = specialFormula.values.Protein || 0;
-
-      const eaaSource = ageGuide.nutrients['EAA'];
-      const eaaTarget = eaaSource
-        ? toDailyValue(pickTarget(eaaSource, inputs.targetMode), eaaSource.unit, safeWeight)
-        : 0;
-      const eaaMax = eaaSource
-        ? toDailyValue(eaaSource.max, eaaSource.unit, safeWeight)
-        : 0;
-
-      const eaaNeeded = Math.min(eaaTarget, eaaMax);
+      const eaaNeeded = targetByNutrient.EAA || 0;
 
       specialAmount = specialProteinPer100 > EPSILON && eaaNeeded > EPSILON
         ? (eaaNeeded * 100) / specialProteinPer100

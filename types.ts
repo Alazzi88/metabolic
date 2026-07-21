@@ -92,6 +92,11 @@ export interface CalculationInputs {
   // target, so the whole plan (special/modular sizing, coverage) follows it.
   overrideEnergy?: number;
   overrideProtein?: number;
+  // UCD only: same auto-or-manual pattern, for the Natural Protein / EAA
+  // split (Table 24-1 has no such split; the guideline-derived "auto" value
+  // instead comes from the Bernstein/Rohr/van Calcar reference by subtype).
+  overrideNaturalProtein?: number;
+  overrideEAA?: number;
 }
 
 export interface CalculatedRequirement {
