@@ -1733,10 +1733,6 @@ const App: React.FC = () => {
         <footer className="text-center text-xs text-slate-500 space-y-1 pb-8">
           <p>Developed by Yahya Alizzi</p>
           <p>Reviewed by Maged Gardah &amp; Osama Hakami</p>
-          <p className="text-[10px] text-slate-400 mt-1">
-            Reference: <em>Nutrition Management of Inherited Metabolic Diseases, 2nd Edition</em> (Springer 2022)
-            — Bernstein, Rohr &amp; van Calcar
-          </p>
         </footer>
       </main>
     </div>
